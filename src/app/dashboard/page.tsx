@@ -22,16 +22,21 @@ if (!user) {
   redirect("/login");
 }
 
-const ownedDocuments = await prisma.document.findMany({
-  where: {
-    ownerId: user.id,
-  },
-  orderBy: {
-    updatedAt: "desc",
-  },
-});
+const ownedDocuments = (
+  await prisma.document.findMany({
+    where: {
+      ownerId: user.id,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  })
+).map((doc) => ({
+  ...doc,
+  role: "OWNER" as const,
+}));
 
-const sharedDocuments = await prisma.document.findMany({
+const sharedDocumentsRaw = await prisma.document.findMany({
   where: {
     ownerId: {
       not: user.id,
@@ -42,10 +47,25 @@ const sharedDocuments = await prisma.document.findMany({
       },
     },
   },
+  include: {
+    members: {
+      where: {
+        userId: user.id,
+      },
+      select: {
+        role: true,
+      },
+    },
+  },
   orderBy: {
     updatedAt: "desc",
   },
 });
+
+const sharedDocuments = sharedDocumentsRaw.map((doc) => ({
+  ...doc,
+  role: doc.members[0].role,
+}));
 
 return <DashboardClient ownedDocuments={ownedDocuments} sharedDocuments={sharedDocuments} />;
 }

@@ -3,6 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import DocumentCard from "@/components/document/document-card";
+import HistoryDialog from "@/components/document/history-dialog";
 import { useState } from "react";
 import { DocumentRole } from "@/generated/prisma";
 import { toast } from "sonner";
