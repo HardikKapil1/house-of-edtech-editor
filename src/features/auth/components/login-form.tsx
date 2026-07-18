@@ -1,8 +1,10 @@
+// src/features/auth/components/login-form.tsx
 "use client";
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -59,6 +61,12 @@ export default function LoginForm() {
       >
         Login
       </button>
+      <p className="text-center text-sm text-gray-500 mt-4">
+  Don't have an account?{" "}
+  <Link href="/register" className="underline">
+    Register
+  </Link>
+</p>
     </form>
   );
 }
