@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export function Header() {
   const { data: session } = useSession();
-  if (!session) return null; // hide header if not logged in (covers login/register naturally)
+  if (!session) return null;
 
   return (
     <header className="border-b px-6 py-3 flex items-center justify-between">

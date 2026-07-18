@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import AuthProvider from "@/components/providers/session-provider";
 import { Toaster } from "sonner";
 import { Footer } from "@/components/layout/footer";
-import { Header } from "node_modules/@base-ui/react/accordion/index.parts.mjs";
+import { Header } from "@/components/layout/header";
 
+export const dynamic = "force-dynamic";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
