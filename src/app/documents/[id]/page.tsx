@@ -6,6 +6,7 @@ import { canView, getMembership } from "@/lib/document-permissions";
 import { prisma } from "@/lib/prisma";
 import { JSONContent } from "@tiptap/core";
 import { notFound } from "next/navigation";
+import { DocumentRole } from "@/generated/prisma";
 
 interface PageProps {
   params: Promise<{
@@ -17,8 +18,6 @@ export default async function DocumentPage({
   params,
 }: PageProps) {
   const { id } = await params;
-
-  
 
 const user = await requireCurrentUser();
 
@@ -33,6 +32,7 @@ const document = await prisma.document.findUnique({
   },
 });
 
+const role = membership.role;
   if (!document) {
     notFound();
   }
@@ -43,12 +43,16 @@ const document = await prisma.document.findUnique({
   <h1 className="text-3xl font-bold">
     Document
   </h1>
+  {(role === DocumentRole.OWNER && (
+
 <ShareDialog documentId={document.id} />
+  ))}
 </div>
       <TipTapEditor
         documentId={document.id}
         initialTitle={document.title}
         content={document.content as JSONContent}
+        editable={role !== DocumentRole.VIEWER}
       />
     </main>
   );

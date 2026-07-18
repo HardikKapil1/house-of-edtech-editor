@@ -3,48 +3,52 @@
 import { useRouter } from "next/navigation";
 import DocumentCard from "@/components/document/document-card";
 import { useState } from "react";
+import { DocumentRole } from "@/generated/prisma";
 
 interface DashboardClientProps {
   ownedDocuments: {
     id: string;
     title: string | null;
     updatedAt: Date;
+    role: DocumentRole;
   }[];
   sharedDocuments: {
     id: string;
     title: string | null;
     updatedAt: Date;
+    role: DocumentRole;
   }[];
 }
 
 export default function DashboardClient({ ownedDocuments, sharedDocuments }: DashboardClientProps) {
   const router = useRouter();
-  
-  // 1. Moved state and filter logic to the top level of the component
   const [search, setSearch] = useState("");
   
-  // 2. Added a fallback `|| ""` so .toLowerCase() doesn't crash on null titles
   const filteredOwnedDocuments = ownedDocuments.filter((document) =>
     (document.title || "").toLowerCase().includes(search.toLowerCase())
   );
- const filteredSharedDocuments = sharedDocuments.filter((document) =>
+  
+  const filteredSharedDocuments = sharedDocuments.filter((document) =>
     (document.title || "").toLowerCase().includes(search.toLowerCase())
   );
 
-
   async function createDocument() {
-    const response = await fetch("/api/documents", {
-      method: "POST",
-    });
+    try {
+      const response = await fetch("/api/documents", {
+        method: "POST",
+      });
 
-    const data = await response.json();
+      if (!response.ok) {
+        alert("Failed to create document");
+        return;
+      }
 
-    if (!response.ok) {
-      alert("Failed");
-      return;
+      const data = await response.json();
+      router.push(`/documents/${data.document.id}`);
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong");
     }
-
-    router.push(`/documents/${data.document.id}`);
   }
 
   return (
@@ -87,6 +91,7 @@ export default function DashboardClient({ ownedDocuments, sharedDocuments }: Das
                 id={document.id}
                 title={document.title}
                 updatedAt={document.updatedAt}
+                role={document.role} 
               />
             ))}
           </div>
@@ -111,6 +116,7 @@ export default function DashboardClient({ ownedDocuments, sharedDocuments }: Das
                 id={document.id}
                 title={document.title}
                 updatedAt={document.updatedAt}
+                role={document.role} 
               />
             ))}
           </div>

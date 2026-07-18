@@ -21,19 +21,14 @@ interface Props {
   id: string;
   title: string | null;
   updatedAt: Date | string;
+  role: "OWNER" | "EDITOR" | "VIEWER"; // 1. Added role prop
 }
 
-export default function DocumentCard({
-  id,
-  title,
-  updatedAt,
-}: Props) {
+export default function DocumentCard({ id, title, updatedAt, role }: Props) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
 
-  const handleDelete = async (
-    e: React.MouseEvent<HTMLButtonElement>
-  ) => {
+  const handleDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -61,14 +56,19 @@ export default function DocumentCard({
           <FileText className="h-6 w-6 text-blue-500" />
 
           <div>
-            <h2 className="truncate font-semibold">
-              {title || "Untitled Document"}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="truncate font-semibold">
+                {title || "Untitled Document"}
+              </h2>
+              {/* 2. Conditionally render the Read Only badge */}
+              {role === "VIEWER" && (
+                <span className="rounded bg-gray-200 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-gray-600">
+                  Read Only
+                </span>
+              )}
+            </div>
 
-            <p
-              suppressHydrationWarning
-              className="text-sm text-muted-foreground"
-            >
+            <p suppressHydrationWarning className="text-sm text-muted-foreground">
               Updated{" "}
               {formatDistanceToNow(new Date(updatedAt), {
                 addSuffix: true,
@@ -78,6 +78,8 @@ export default function DocumentCard({
         </div>
       </Link>
 
+      {/* 3. Only the OWNER should see the delete button */}
+      {role === "OWNER" && (
         <AlertDialog open={open} onOpenChange={setOpen}>
           <button
             onClick={(event) => {
@@ -102,12 +104,13 @@ export default function DocumentCard({
 
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>
+              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      )}
     </div>
   );
 }

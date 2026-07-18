@@ -48,7 +48,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       );
     }
 
-    return NextResponse.json(document);
+    return NextResponse.json({ ...document, role: membership.role });
   } catch (error) {
     console.error(error);
 

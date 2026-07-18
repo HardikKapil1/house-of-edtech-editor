@@ -1,3 +1,4 @@
+// src/components/editor/tiptap-editor.tsx
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,6 +11,7 @@ interface TipTapEditorProps {
   documentId: string;
   initialTitle: string;
   content: JSONContent;
+  editable: boolean;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -18,6 +20,7 @@ export default function TipTapEditor({
   documentId,
   initialTitle,
   content,
+  editable,
 }: TipTapEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -25,7 +28,6 @@ export default function TipTapEditor({
 
   // Always contains latest title
   const titleRef = useRef(initialTitle);
-
   // Debounce timer
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -44,6 +46,7 @@ export default function TipTapEditor({
             content,
           }),
         });
+        
         router.refresh();
 
         if (!response.ok) {
@@ -56,7 +59,7 @@ export default function TipTapEditor({
         setSaveStatus("error");
       }
     },
-    [documentId]
+    [documentId, router]
   );
 
   const scheduleSave = useCallback(
@@ -76,25 +79,18 @@ export default function TipTapEditor({
     extensions: [StarterKit],
     content,
     immediatelyRender: false,
-
+    editable: editable, // Lock TipTap internally based on prop
     onUpdate: ({ editor }) => {
+      if (!editable) return;
       scheduleSave(editor.getJSON(), titleRef.current);
     },
   });
 
-  const handleTitleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const newTitle = e.target.value;
+  useEffect(() => {
+    editor?.setEditable(editable);
+  }, [editor, editable]);
 
-    setTitle(newTitle);
-    titleRef.current = newTitle;
-
-    if (!editor) return;
-
-    scheduleSave(editor.getJSON(), newTitle);
-  };
-
+  // Clean up timer on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -103,6 +99,17 @@ export default function TipTapEditor({
     };
   }, []);
 
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editable) return; // Failsafe
+
+    const newTitle = e.target.value;
+    setTitle(newTitle);
+    titleRef.current = newTitle;
+
+    if (!editor) return;
+    scheduleSave(editor.getJSON(), newTitle);
+  };
+
   if (!editor) return null;
 
   return (
@@ -110,8 +117,11 @@ export default function TipTapEditor({
       <input
         value={title}
         onChange={handleTitleChange}
+        readOnly={!editable} // 3. Prevent title from being changed by viewers!
         placeholder="Untitled Document"
-        className="w-full bg-transparent text-4xl font-bold outline-none"
+        className={`w-full bg-transparent text-4xl font-bold outline-none ${
+          !editable ? "cursor-default" : ""
+        }`}
       />
 
       <div className="text-sm text-gray-500">
@@ -119,9 +129,7 @@ export default function TipTapEditor({
         {saveStatus === "saving" && "Saving..."}
         {saveStatus === "saved" && "Saved ✓"}
         {saveStatus === "error" && (
-          <span className="text-red-500">
-            Failed to save
-          </span>
+          <span className="text-red-500">Failed to save</span>
         )}
       </div>
 
