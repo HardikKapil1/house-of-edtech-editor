@@ -1,4 +1,6 @@
 // src/app/api/documents/route.ts
+import { AuditAction } from "@/generated/prisma";
+import { createAuditLog } from "@/lib/audit-log";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -43,6 +45,11 @@ export async function POST() {
           documentId: newDoc.id,
           role: "OWNER",
         },
+      });
+      await createAuditLog({
+        action: AuditAction.DOCUMENT_CREATED,
+        documentId: newDoc.id,
+        userId: user.id,
       });
 
       return newDoc;

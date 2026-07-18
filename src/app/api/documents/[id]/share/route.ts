@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth-utils";
 import { getMembership, canShare } from "@/lib/document-permissions";
 import { prisma } from "@/lib/prisma";
-import { DocumentRole } from "@/generated/prisma";
+import { AuditAction, DocumentRole } from "@/generated/prisma";
+import { createAuditLog } from "@/lib/audit-log";
 
 interface RouteProps {
   params: Promise<{
@@ -74,6 +75,15 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
       },
     });
 
+    await createAuditLog({
+      action: AuditAction.DOCUMENT_SHARED,
+      documentId: id,
+      userId: currentUser.id,
+      metadata: {
+        targetUserId: invitedUser.id,
+        role,
+      },
+    });
     return NextResponse.json({
       message: "Document shared successfully.",
     });

@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { getMembership, canEdit, canView } from "@/lib/document-permissions";
-import { Prisma } from "@/generated/prisma";
+import { AuditAction, Prisma } from "@/generated/prisma";
+import { createAuditLog } from "@/lib/audit-log";
 
 interface RouteProps {
   params: Promise<{
@@ -21,12 +22,9 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
     if (!membership || !canView(membership.role)) {
       return NextResponse.json(
         {
-          error:
-            "You don't have permission to view snapshots for this document.",
+          error: "You don't have permission to view snapshots.",
         },
-        {
-          status: 403,
-        },
+        { status: 403 },
       );
     }
 
@@ -40,17 +38,22 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       select: {
         id: true,
         version: true,
-        createdAt: true,
         title: true,
+        createdAt: true,
       },
     });
 
     return NextResponse.json(snapshots);
   } catch (error) {
     console.error(error);
+
     return NextResponse.json(
-      { error: "Failed to fetch snapshots" },
-      { status: 500 },
+      {
+        error: "Failed to fetch snapshots",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
@@ -100,6 +103,14 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
         version: nextVersion,
         title: document.title,
         content: document.content as Prisma.InputJsonValue,
+      },
+    });
+    await createAuditLog({
+      action: AuditAction.SNAPSHOT_CREATED,
+      documentId: id,
+      userId: user.id,
+      metadata: {
+        version: newSnapshot.version,
       },
     });
 

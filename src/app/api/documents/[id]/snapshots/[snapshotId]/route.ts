@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { getMembership, canEdit, canView } from "@/lib/document-permissions";
+import { AuditAction } from "@/generated/prisma";
+import { createAuditLog } from "@/lib/audit-log";
 interface RouteProps {
   params: Promise<{
     id: string;
@@ -38,6 +40,14 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
         { status: 404 },
       );
     }
+    await createAuditLog({
+      action: AuditAction.SNAPSHOT_RESTORED,
+      documentId: id,
+      userId: user.id,
+      metadata: {
+        restoredVersion: snapshot.version,
+      },
+    });
 
     return NextResponse.json({ snapshot }, { status: 200 });
   } catch (error) {

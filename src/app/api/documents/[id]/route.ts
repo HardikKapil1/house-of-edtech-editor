@@ -9,6 +9,8 @@ import {
 } from "@/lib/document-permissions";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { AuditAction } from "@/generated/prisma";
+import { createAuditLog } from "@/lib/audit-log";
 
 interface RouteProps {
   params: Promise<{
@@ -86,6 +88,11 @@ export async function PUT(request: NextRequest, { params }: RouteProps) {
         content,
       },
     });
+    await createAuditLog({
+      action: AuditAction.DOCUMENT_UPDATED,
+      documentId: id,
+      userId: user.id,
+    });
 
     revalidatePath("/dashboard");
 
@@ -118,6 +125,11 @@ export async function DELETE(request: NextRequest, { params }: RouteProps) {
       );
     }
 
+    await createAuditLog({
+      action: AuditAction.DOCUMENT_DELETED,
+      documentId: id,
+      userId: user.id,
+    });
     await prisma.document.delete({
       where: {
         id,

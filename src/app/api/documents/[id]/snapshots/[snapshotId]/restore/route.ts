@@ -1,3 +1,4 @@
+// src/app/api/documents/[id]/snapshots/[snapshotId]/restore/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +19,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "You don't have permission to create a snapshot for this document.",
+            "You don't have permission to restore this document.",
         },
         {
           status: 403,
@@ -42,7 +43,7 @@ export async function POST(
       );
     }
 
-    const snapshot = await prisma.snapshot.findFirst({
+    const snapshot = await prisma.snapshot.findUnique({
       where: { id: snapshotId },
     });
     if (!snapshot) {
