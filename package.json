@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "start-ws": "node ./node_modules/y-websocket/bin/server.js"
   },
   "dependencies": {
