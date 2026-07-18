@@ -3,7 +3,12 @@ const http = require("http");
 // Import the WebSocket server implementation used by y-websocket.
 const WebSocket = require("ws");
 // Import y-websocket's helper that wires a raw socket to a Yjs room/document.
-const { setupWSConnection } = require("y-websocket/bin/utils.js");
+// const { setupWSConnection } = require("y-websocket/bin/utils.js");
+
+const path = require("path");
+const { setupWSConnection } = require(
+  path.join(__dirname, "node_modules/y-websocket/bin/utils.js")
+);
 
 // Read HOST from environment so platforms like Railway/Render can bind correctly.
 const HOST = process.env.HOST || "0.0.0.0";

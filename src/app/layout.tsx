@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/providers/session-provider";
 import { Toaster } from "sonner";
+import { Footer } from "@/components/layout/footer";
+import { Header } from "node_modules/@base-ui/react/accordion/index.parts.mjs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +29,9 @@ export default function RootLayout({
 return (
     <html>
       <body>
+        <Header />
         {children}
+        <Footer />
         <Toaster richColors />
       </body>
     </html>
