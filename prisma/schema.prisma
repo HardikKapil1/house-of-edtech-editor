@@ -17,6 +17,15 @@ enum DocumentRole {
   VIEWER
 }
 
+enum AuditAction {
+  DOCUMENT_CREATED
+  DOCUMENT_UPDATED
+  SNAPSHOT_CREATED
+  SNAPSHOT_RESTORED
+  DOCUMENT_SHARED
+  DOCUMENT_DELETED
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -28,6 +37,7 @@ model User {
 
   ownedDocuments Document[]       @relation("DocumentOwner")
   memberships    DocumentMember[]
+  auditLogs AuditLog[]
 }
 
 model Document {
@@ -42,6 +52,7 @@ model Document {
   owner      User               @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members    DocumentMember[]
   snapshots  Snapshot[]
+  auditLogs AuditLog[]
 
   @@index([ownerId])
 }
@@ -79,4 +90,24 @@ model Snapshot {
 
   @@unique([documentId, version])
   @@index([documentId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+
+  action     AuditAction
+
+  documentId String
+  userId     String
+
+  metadata   Json?
+
+  createdAt  DateTime @default(now())
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([createdAt])
 }
