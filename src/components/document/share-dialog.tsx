@@ -46,12 +46,12 @@ const handleShare = async () => {
       }
     );
 
-    const data = await response.json();
+const data = await response.json();
 
-    if (!response.ok) {
-      setError(data.error || "Something went wrong.");
-      return;
-    }
+if (!response.ok) {
+  setError(data.error);
+  return;
+}
 
     // Success
     setEmail("");

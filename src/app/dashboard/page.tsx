@@ -22,7 +22,7 @@ if (!user) {
   redirect("/login");
 }
 
-const documents = await prisma.document.findMany({
+const ownedDocuments = await prisma.document.findMany({
   where: {
     ownerId: user.id,
   },
@@ -31,5 +31,21 @@ const documents = await prisma.document.findMany({
   },
 });
 
-return <DashboardClient documents={documents} />;
+const sharedDocuments = await prisma.document.findMany({
+  where: {
+    ownerId: {
+      not: user.id,
+    },
+    members: {
+      some: {
+        userId: user.id,
+      },
+    },
+  },
+  orderBy: {
+    updatedAt: "desc",
+  },
+});
+
+return <DashboardClient ownedDocuments={ownedDocuments} sharedDocuments={sharedDocuments} />;
 }

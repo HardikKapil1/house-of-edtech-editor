@@ -1,6 +1,12 @@
 // src/app/api/documents/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireCurrentUser } from "@/lib/auth-utils";
+import {
+  getMembership,
+  canView,
+  canEdit,
+  canDelete,
+} from "@/lib/document-permissions";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
@@ -10,81 +16,124 @@ interface RouteProps {
   }>;
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteProps
-) {
+export async function GET(request: NextRequest, { params }: RouteProps) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const user = await requireCurrentUser();
 
     const { id } = await params;
 
-    const { title, content } = await request.json();
+    const membership = await getMembership(id, user.id);
 
-    const document = await prisma.document.update({
-      where: {
-        id,
-      },
-      data: {
-        title,
-        content,
+    if (!membership || !canView(membership.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const document = await prisma.document.findUnique({
+      where: { id },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
-    revalidatePath("/dashboard");
+
+    if (!document) {
+      return NextResponse.json(
+        { error: "Document not found" },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json(document);
   } catch (error) {
     console.error(error);
 
     return NextResponse.json(
-      { error: "Failed to update document" },
-      { status: 500 }
+      { error: "Failed to fetch document" },
+      { status: 500 },
     );
   }
 }
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteProps
-) {
-  const session = await auth();
 
-  if (!session?.user?.email) {
+export async function PUT(request: NextRequest, { params }: RouteProps) {
+  try {
+    const user = await requireCurrentUser();
+
+    const { id } = await params;
+
+    const { title, content } = await request.json();
+
+    const membership = await getMembership(id, user.id);
+
+    if (!membership || !canEdit(membership.role)) {
+      return NextResponse.json(
+        {
+          error: "You don't have permission to edit this document.",
+        },
+        {
+          status: 403,
+        },
+      );
+    }
+    const document = await prisma.document.update({
+      where: { id },
+      data: {
+        title,
+        content,
+      },
+    });
+
+    revalidatePath("/dashboard");
+
+    return NextResponse.json(document);
+  } catch (error) {
+    console.error(error);
     return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
+      { error: "Failed to update document" },
+      { status: 500 },
     );
   }
+}
 
-  const { id } = await params;
+export async function DELETE(request: NextRequest, { params }: RouteProps) {
+  try {
+    const user = await requireCurrentUser();
 
-  const user = await prisma.user.findUnique({
-    where: {
-      email: session.user.email,
-    },
-  });
+    const { id } = await params;
 
-  if (!user) {
+    const membership = await getMembership(id, user.id);
+
+    if (!membership || !canDelete(membership.role)) {
+      return NextResponse.json(
+        {
+          error: "You don't have permission to delete this document.",
+        },
+        {
+          status: 403,
+        },
+      );
+    }
+
+    await prisma.document.delete({
+      where: {
+        id,
+      },
+    });
+
+    revalidatePath("/dashboard");
+
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error(error);
     return NextResponse.json(
-      { error: "User not found" },
-      { status: 404 }
+      { error: "Failed to delete document" },
+      { status: 500 },
     );
   }
-
-  await prisma.document.deleteMany({
-    where: {
-      id,
-      ownerId: user.id,
-    },
-  });
-
-  return NextResponse.json({
-    success: true,
-  });
 }
