@@ -5,8 +5,9 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { JSONContent } from "@tiptap/core";
 import { db } from "@/lib/db";
+import { flushQueue, queueChange } from "@/lib/sync-queue";
 import { Collaboration } from "@tiptap/extension-collaboration";
-import { CollaborationCursor } from "@tiptap/extension-collaboration-cursor";
+import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
 import { createCollaborationProvider } from "@/lib/collaboration";
 
 interface TipTapEditorProps {
@@ -71,7 +72,7 @@ export default function TipTapEditor({
         document: ydoc,
       }),
       // 4. Pass the provider and mock user data to the cursor extension
-      CollaborationCursor.configure({
+      CollaborationCaret.configure({
         provider: provider,
         user: {
           name: `User ${Math.floor(Math.random() * 1000)}`,
@@ -89,6 +90,33 @@ export default function TipTapEditor({
     editor?.setEditable(editable);
   }, [editor, editable]);
 
+  // Queues offline title edits to be sent as soon as the browser reports that
+  // it has reconnected, preventing a user's latest change from being lost.
+  useEffect(() => {
+    // Attempts the retained local update after the browser reports a connection.
+    const handleOnline = () => {
+      void flushQueue(documentId)
+        .then((response) => {
+          if (response?.status === 409) {
+            alert("Server has newer changes — reload?");
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to sync queued changes", error);
+        });
+    };
+
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [documentId]);
+
+  /**
+   * Updates the visible title and either saves it immediately or queues it
+   * offline, so typing remains responsive regardless of network availability.
+   */
   const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editable) return;
 
@@ -98,11 +126,31 @@ export default function TipTapEditor({
     // Save title to the database (Autosave for document body is disabled per Phase 5)
     try {
       setSaveStatus("saving");
-      await fetch(`/api/documents/${documentId}`, {
+
+      if (!navigator.onLine) {
+        await queueChange(documentId, newTitle, content);
+        setSaveStatus("saved");
+        return;
+      }
+
+      const response = await fetch(`/api/documents/${documentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle }), // Only updating the title
+        // The edit timestamp lets the server deterministically reject an older write.
+        body: JSON.stringify({ title: newTitle, clientUpdatedAt: Date.now() }),
       });
+
+      if (response.status === 409) {
+        // Do not silently replace a newer server edit; let the user choose to reload.
+        alert("Server has newer changes — reload?");
+        setSaveStatus("error");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to save title");
+      }
+
       setSaveStatus("saved");
     } catch (error) {
       console.error("Failed to save title", error);

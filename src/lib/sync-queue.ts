@@ -1,9 +1,14 @@
-// src/lib/sync-queue.ts
 import { db } from "@/lib/db";
 
+/**
+ * Stores the newest unsynced document state locally so an offline edit is not
+ * lost and can be retried once the browser regains connectivity.
+ */
 export async function queueChange(documentId: string, title: string | null, content: unknown) {
   await db.pendingChanges.put({
-    id: documentId, // one pending row per doc, overwrite = latest wins locally
+    // A document ID as the primary key makes subsequent edits replace the
+    // older queued version, ensuring the latest local state is what syncs.
+    id: documentId,
     documentId,
     title,
     content,
@@ -11,6 +16,10 @@ export async function queueChange(documentId: string, title: string | null, cont
   });
 }
 
+/**
+ * Sends a document's queued change to the API and removes it only after the
+ * server accepts it, so failed requests remain available for a later retry.
+ */
 export async function flushQueue(documentId: string) {
   const change = await db.pendingChanges.get(documentId);
   if (!change) return;
@@ -22,4 +31,7 @@ export async function flushQueue(documentId: string) {
   });
 
   if (res.ok) await db.pendingChanges.delete(documentId);
+
+  // Return the response so the UI can surface a stale-write conflict to the user.
+  return res;
 }
