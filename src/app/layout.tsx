@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import AuthProvider from "@/components/providers/session-provider";
 
 export const dynamic = "force-dynamic";
 const geistSans = Geist({
@@ -29,11 +30,13 @@ export default function RootLayout({
 return (
     <html>
       <body>
-        <Header />
-        {children}
-        <Footer />
-        <Toaster richColors />
-      </body>
+  <AuthProvider>
+    <Header />
+    {children}
+    <Footer />
+    <Toaster richColors />
+  </AuthProvider>
+</body>
     </html>
   );
 
