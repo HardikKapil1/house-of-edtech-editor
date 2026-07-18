@@ -50,7 +50,7 @@ export async function POST() {
         action: AuditAction.DOCUMENT_CREATED,
         documentId: newDoc.id,
         userId: user.id,
-      });
+      }, tx);
 
       return newDoc;
     });

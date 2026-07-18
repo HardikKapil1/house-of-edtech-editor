@@ -9,13 +9,11 @@ interface CreateAuditLogParams {
   metadata?: Prisma.InputJsonValue;
 }
 
-export async function createAuditLog({
-  action,
-  documentId,
-  userId,
-  metadata,
-}: CreateAuditLogParams) {
-  await prisma.auditLog.create({
+export async function createAuditLog(
+  { action, documentId, userId, metadata }: CreateAuditLogParams,
+  client: Prisma.TransactionClient | typeof prisma = prisma,
+) {
+  await client.auditLog.create({
     data: {
       action,
       documentId,
