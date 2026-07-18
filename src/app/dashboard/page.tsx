@@ -1,22 +1,35 @@
+// src/app/dashboard/page.tsx
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import DashboardClient from "@/features/dashboard/dashboard-client";
+import { prisma } from "@/lib/prisma";
+
 
 export default async function DashboardPage() {
   const session = await auth();
 
-  if (!session) {
-    redirect("/login");
-  }
+if (!session?.user?.email) {
+  redirect("/login");
+}
 
-  return (
-    <main className="p-10">
-      <h1 className="text-3xl font-bold">
-        Welcome {session.user?.name}
-      </h1>
+const user = await prisma.user.findUnique({
+  where: {
+    email: session.user.email,
+  },
+});
 
-      <p className="mt-4">
-        Authentication is working correctly! You are logged in as {session.user?.email}.
-      </p>
-    </main>
-  );
+if (!user) {
+  redirect("/login");
+}
+
+const documents = await prisma.document.findMany({
+  where: {
+    ownerId: user.id,
+  },
+  orderBy: {
+    updatedAt: "desc",
+  },
+});
+
+return <DashboardClient documents={documents} />;
 }
