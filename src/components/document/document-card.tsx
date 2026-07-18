@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FileText, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,7 @@ interface Props {
   id: string;
   title: string | null;
   updatedAt: Date | string;
-  role: "OWNER" | "EDITOR" | "VIEWER"; // 1. Added role prop
+  role: "OWNER" | "EDITOR" | "VIEWER";
 }
 
 export default function DocumentCard({ id, title, updatedAt, role }: Props) {
@@ -41,17 +42,18 @@ export default function DocumentCard({ id, title, updatedAt, role }: Props) {
         throw new Error("Failed to delete document");
       }
 
+      toast.success("Document deleted.");
       router.refresh();
       setOpen(false);
     } catch (error) {
       console.error("Failed to delete document:", error);
-      alert("Failed to delete document.");
+      toast.error("Failed to delete document.");
     }
   };
 
   return (
     <div className="group flex items-center justify-between rounded-xl border p-5 transition hover:bg-muted">
-      <Link href={`/documents/${id}`} className="flex min-w-0 flex-1 items-center gap-4">
+      <Link href={`/documents/${id}`}prefetch={false} className="flex min-w-0 flex-1 items-center gap-4">
         <div className="flex items-center gap-4">
           <FileText className="h-6 w-6 text-blue-500" />
 
@@ -60,7 +62,6 @@ export default function DocumentCard({ id, title, updatedAt, role }: Props) {
               <h2 className="truncate font-semibold">
                 {title || "Untitled Document"}
               </h2>
-              {/* 2. Conditionally render the Read Only badge */}
               {role === "VIEWER" && (
                 <span className="rounded bg-gray-200 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-gray-600">
                   Read Only
@@ -78,7 +79,6 @@ export default function DocumentCard({ id, title, updatedAt, role }: Props) {
         </div>
       </Link>
 
-      {/* 3. Only the OWNER should see the delete button */}
       {role === "OWNER" && (
         <AlertDialog open={open} onOpenChange={setOpen}>
           <button

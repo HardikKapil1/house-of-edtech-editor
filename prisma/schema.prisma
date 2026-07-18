@@ -65,13 +65,17 @@ model DocumentMember {
 
 model Snapshot {
   id         String   @id @default(cuid())
+
   version    Int
+
   documentId String
+
+  title      String
   content    Json
 
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, version])
   @@index([documentId])

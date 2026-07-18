@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -11,39 +12,37 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
   });
-  const [message, setMessage] = useState('');
 
-const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-  event.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  if (form.password !== form.confirmPassword) {
-    setMessage("Passwords do not match.");
-    return;
-  }
+    if (form.password !== form.confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
 
-  const response = await fetch("/api/register", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-    }),
-  });
+    const response = await fetch("/api/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+      }),
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    setMessage(data.error ?? "Registration failed");
-    return;
-  }
+    if (!response.ok) {
+      toast.error(data.error ?? "Registration failed");
+      return;
+    }
 
-  setMessage("Registration successful!");
-
-  window.location.href = "/login";
-};
+    toast.success("Registration successful!");
+    window.location.href = "/login";
+  };
 
   return (
     <main
@@ -137,12 +136,6 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
             Register
           </button>
         </form>
-
-        {message ? (
-          <p role="status" style={{ marginTop: '16px', color: '#0f766e', fontWeight: 600 }}>
-            {message}
-          </p>
-        ) : null}
 
         <p style={{ marginTop: '20px', color: '#64748b' }}>
           Already have an account?{' '}

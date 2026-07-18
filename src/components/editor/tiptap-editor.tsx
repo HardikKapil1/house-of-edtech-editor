@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { JSONContent } from "@tiptap/core";
-import { useRouter } from "next/navigation";
 
 interface TipTapEditorProps {
   documentId: string;
@@ -24,12 +23,24 @@ export default function TipTapEditor({
 }: TipTapEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const router = useRouter();
 
   // Always contains latest title
   const titleRef = useRef(initialTitle);
   // Debounce timer
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasInitialized = useRef(false);
+  const lastSavedTitle = useRef(initialTitle);
+const lastSavedContent = useRef(JSON.stringify(content));
+
+  useEffect(() => {
+  setTitle(initialTitle);
+  titleRef.current = initialTitle;
+
+  lastSavedTitle.current = initialTitle;
+  lastSavedContent.current = JSON.stringify(content);
+
+  hasInitialized.current = false;
+}, [initialTitle, content]);
 
   const saveDocument = useCallback(
     async (content: JSONContent, title: string) => {
@@ -46,8 +57,6 @@ export default function TipTapEditor({
             content,
           }),
         });
-        
-        router.refresh();
 
         if (!response.ok) {
           throw new Error("Failed to save");
@@ -59,7 +68,7 @@ export default function TipTapEditor({
         setSaveStatus("error");
       }
     },
-    [documentId, router]
+    [documentId]
   );
 
   const scheduleSave = useCallback(
@@ -69,8 +78,20 @@ export default function TipTapEditor({
       }
 
       timeoutRef.current = setTimeout(() => {
-        void saveDocument(content, title);
-      }, 1000);
+  const currentContent = JSON.stringify(content);
+
+  if (
+    title === lastSavedTitle.current &&
+    currentContent === lastSavedContent.current
+  ) {
+    return;
+  }
+
+  lastSavedTitle.current = title;
+  lastSavedContent.current = currentContent;
+
+  void saveDocument(content, title);
+}, 1000);
     },
     [saveDocument]
   );
@@ -82,6 +103,12 @@ export default function TipTapEditor({
     editable: editable, // Lock TipTap internally based on prop
     onUpdate: ({ editor }) => {
       if (!editable) return;
+
+      if (!hasInitialized.current) {
+        hasInitialized.current = true;
+        return;
+      }
+
       scheduleSave(editor.getJSON(), titleRef.current);
     },
   });

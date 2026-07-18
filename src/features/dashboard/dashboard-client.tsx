@@ -1,9 +1,11 @@
+// src/features/dashboard/dashboard-client.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
 import DocumentCard from "@/components/document/document-card";
 import { useState } from "react";
 import { DocumentRole } from "@/generated/prisma";
+import { toast } from "sonner";
 
 interface DashboardClientProps {
   ownedDocuments: {
@@ -39,15 +41,16 @@ export default function DashboardClient({ ownedDocuments, sharedDocuments }: Das
       });
 
       if (!response.ok) {
-        alert("Failed to create document");
+        toast.error("Failed to create document");
         return;
       }
 
       const data = await response.json();
+      toast.success("Document created.");
       router.push(`/documents/${data.document.id}`);
     } catch (error) {
       console.error(error);
-      alert("Something went wrong");
+      toast.error("Something went wrong");
     }
   }
 
