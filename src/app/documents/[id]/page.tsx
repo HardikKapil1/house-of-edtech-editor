@@ -1,3 +1,5 @@
+//src/app/documents/[id]/page.tsx
+import ShareDialog from "@/components/document/share-dialog";
 import TipTapEditor from "@/components/editor/tiptap-editor";
 import { prisma } from "@/lib/prisma";
 import { JSONContent } from "@tiptap/core";
@@ -23,12 +25,20 @@ export default async function DocumentPage({
   }
 
   return (
+    
     <main className="mx-auto max-w-5xl p-10">
+      <div className="mb-6 flex items-center justify-between">
+  <h1 className="text-3xl font-bold">
+    Document
+  </h1>
+<ShareDialog documentId={document.id} />
+</div>
       <TipTapEditor
         documentId={document.id}
         initialTitle={document.title}
         content={document.content as JSONContent}
       />
     </main>
+    
   );
 }

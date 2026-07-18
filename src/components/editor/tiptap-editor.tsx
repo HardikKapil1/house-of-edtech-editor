@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { JSONContent } from "@tiptap/core";
+import { useRouter } from "next/navigation";
 
 interface TipTapEditorProps {
   documentId: string;
@@ -20,6 +21,7 @@ export default function TipTapEditor({
 }: TipTapEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const router = useRouter();
 
   // Always contains latest title
   const titleRef = useRef(initialTitle);
@@ -42,6 +44,7 @@ export default function TipTapEditor({
             content,
           }),
         });
+        router.refresh();
 
         if (!response.ok) {
           throw new Error("Failed to save");

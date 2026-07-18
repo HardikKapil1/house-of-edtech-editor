@@ -1,6 +1,8 @@
+// src/app/api/documents/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 interface RouteProps {
   params: Promise<{
@@ -35,6 +37,7 @@ export async function PUT(
         content,
       },
     });
+    revalidatePath("/dashboard");
 
     return NextResponse.json(document);
   } catch (error) {
