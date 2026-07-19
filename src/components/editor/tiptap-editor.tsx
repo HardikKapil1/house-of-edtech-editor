@@ -1,7 +1,7 @@
 // src/components/editor/tiptap-editor.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { JSONContent } from "@tiptap/core";
@@ -49,8 +49,8 @@ export default function TipTapEditor({
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const { data: session } = useSession();
 
-  const [{ ydoc, provider }] = useState(() => createCollaborationProvider(documentId));
-
+  const yjsRef = useRef(createCollaborationProvider(documentId));
+  const { ydoc, provider } = yjsRef.current;
   useEffect(() => {
     return () => {
       provider.destroy();
