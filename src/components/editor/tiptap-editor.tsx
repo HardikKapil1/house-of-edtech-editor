@@ -1,12 +1,12 @@
 // src/components/editor/tiptap-editor.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { JSONContent } from "@tiptap/core";
 import { db } from "@/lib/db";
-import { flushQueue, queueChange } from "@/lib/sync-queue";
+import { flushQueue, queueChange, clearQueue } from "@/lib/sync-queue";
 import { Collaboration } from "@tiptap/extension-collaboration";
 import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
 import { createCollaborationProvider } from "@/lib/collaboration";
@@ -28,15 +28,29 @@ interface PendingChange {
   content: JSONContent;
 }
 
-const cursorColors = ['#958DF1', '#F98181', '#FBBC88', '#FAF594', '#70CFF8', '#94FADB', '#B9F18D0', '#E6A0F8', '#FF99C8', '#FFB347', '#FF6961', '#FFB6C1', '#FFD700', '#ADFF2F', '#00CED1', '#1E90FF', '#BA55D3', '#FF4500', '#32CD32', '#00FA9A', '#FF6347', '#40E0D0', '#FF1493', '#7B68EE', '#00BFFF', '#FF69B4', '#8A2BE2', '#00FF7F', '#FF8C00', '#DA70D6', '#00FFFF', '#FF4500', '#ADFF2F', '#1E90FF', '#FF1493', '#32CD32'];
+export type SaveStatus =
+  | "idle"
+  | "saving"
+  | "saved"
+  | "offline"
+  | "error";
+
+const cursorColors = [
+  '#958DF1', '#F98181', '#FBBC88', '#FAF594', '#70CFF8',
+  '#94FADB', '#E6A0F8', '#FF99C8', '#FFB347', '#FF6961',
+  '#FFB6C1', '#FFD700', '#ADFF2F', '#00CED1', '#1E90FF',
+  '#BA55D3', '#32CD32', '#00FA9A', '#FF6347', '#40E0D0',
+  '#FF1493', '#7B68EE', '#00BFFF', '#FF69B4', '#8A2BE2',
+  '#00FF7F', '#FF8C00', '#DA70D6', '#00FFFF', '#FF4500'
+] as const;
 
 function getUserColor(identifier?: string | null) {
   if (!identifier) return cursorColors[0];
   let hash = 0;
   for (let i = 0; i < identifier.length; i++) {
-    hash += identifier.charCodeAt(i);
+    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return cursorColors[hash % cursorColors.length];
+  return cursorColors[Math.abs(hash) % cursorColors.length];
 }
 
 export default function TipTapEditor({
@@ -46,12 +60,31 @@ export default function TipTapEditor({
   editable,
 }: TipTapEditorProps) {
   const [title, setTitle] = useState(initialTitle);
-  const [saveStatus, setSaveStatus] = useState<string>("idle");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
   const { data: session } = useSession();
-// eslint-disable-next-line react-hooks/set-state-in-effect
-  const yjsRef = useRef(createCollaborationProvider(documentId));
-  const { ydoc, provider } = yjsRef.current;
+  const [lastSavedTitle, setLastSavedTitle] = useState(initialTitle);
+
+  // Known-working provider lifecycle: created/recreated during render when
+  // documentId changes, torn down explicitly before recreation. Not fully
+  // "pure render" but stable and shipped-before. Do not refactor this.
+  const yjsRef = useRef<ReturnType<typeof createCollaborationProvider> | null>(null);
+  const yjsDocIdRef = useRef<string | null>(null);
+
+  if (yjsRef.current === null || yjsDocIdRef.current !== documentId) {
+    if (yjsRef.current) {
+      yjsRef.current.provider.destroy();
+      yjsRef.current.ydoc.destroy();
+    }
+
+    yjsRef.current = createCollaborationProvider(documentId);
+    yjsDocIdRef.current = documentId;
+  }
+
+  const { provider, ydoc } = yjsRef.current;
+
   useEffect(() => {
     return () => {
       provider.destroy();
@@ -59,30 +92,45 @@ export default function TipTapEditor({
     };
   }, [provider, ydoc]);
 
-  useEffect(() => {
-    const fetchPendingChanges = async () => {
-      try {
-        const changes = (await db.pendingChanges
-          .where("documentId")
-          .equals(documentId)
-          .toArray()) as PendingChange[];
+  const latestContentRef = useRef(content);
+  const latestTitleRef = useRef(title);
 
-        if (changes && changes.length > 0) {
-          setPendingChanges(changes);
-        }
-      } catch (error) {
-        console.error("Failed to load offline changes", error);
-      }
-    };
-    
-    void fetchPendingChanges();
+  useEffect(() => {
+    latestContentRef.current = content;
+  }, [content]);
+
+  useEffect(() => {
+    latestTitleRef.current = title;
+  }, [title]);
+
+  useEffect(() => {
+    setTitle(initialTitle);
+    setLastSavedTitle(initialTitle);
+    setSaveStatus("idle");
+  }, [initialTitle]);
+
+  const refreshPendingChanges = useCallback(async () => {
+    try {
+      const changes = (await db.pendingChanges
+        .where("documentId")
+        .equals(documentId)
+        .toArray()) as PendingChange[];
+
+      setPendingChanges(changes ?? []);
+    } catch (error) {
+      console.error("Failed to load offline changes", error);
+    }
   }, [documentId]);
+
+  useEffect(() => {
+    void refreshPendingChanges();
+  }, [refreshPendingChanges]);
 
   const editor = useEditor(
     {
       extensions: [
         StarterKit.configure({
-          undoRedo: false, 
+          undoRedo: false,
         }),
         Collaboration.configure({
           document: ydoc,
@@ -110,17 +158,30 @@ export default function TipTapEditor({
     editor?.setEditable(editable);
   }, [editor, editable]);
 
+  const syncQueuedChanges = useCallback(async () => {
+    const response = await flushQueue(documentId);
+
+    if (!response) return;
+
+    if (response.status === 409) {
+      toast.info("Server has newer changes. Reload the page to see them.");
+      setSaveStatus("error");
+      return;
+    }
+
+    if (response.ok) {
+      setLastSavedTitle(latestTitleRef.current);
+      setSaveStatus("saved");
+      await refreshPendingChanges();
+    }
+  }, [documentId, refreshPendingChanges]);
+
   useEffect(() => {
     const handleOnline = () => {
-      void flushQueue(documentId)
-        .then((response) => {
-          if (response?.status === 409) {
-            toast.info("Server has newer changes. Reload the page to see them.");
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to sync queued changes", error);
-        });
+      void syncQueuedChanges().catch((error) => {
+        console.error("Failed to sync queued changes", error);
+        setSaveStatus("error");
+      });
     };
 
     window.addEventListener("online", handleOnline);
@@ -128,20 +189,21 @@ export default function TipTapEditor({
     return () => {
       window.removeEventListener("online", handleOnline);
     };
-  }, [documentId]);
+  }, [syncQueuedChanges]);
 
   useEffect(() => {
     if (!editable) return;
 
-    if (title === initialTitle) return;
+    if (title === lastSavedTitle) return;
 
     const timer = setTimeout(async () => {
       try {
         setSaveStatus("saving");
 
         if (!navigator.onLine) {
-          await queueChange(documentId, title, content);
-          setSaveStatus("saved");
+          await queueChange(documentId, title, latestContentRef.current);
+          setSaveStatus("offline");
+          await refreshPendingChanges();
           return;
         }
 
@@ -167,6 +229,7 @@ export default function TipTapEditor({
           throw new Error("Failed to save title");
         }
 
+        setLastSavedTitle(title);
         setSaveStatus("saved");
       } catch (error) {
         console.error(error);
@@ -177,12 +240,42 @@ export default function TipTapEditor({
     return () => clearTimeout(timer);
   }, [
     title,
+    lastSavedTitle,
     editable,
     documentId,
-    content,
-    initialTitle,
+    refreshPendingChanges,
   ]);
 
+  const handleSyncClick = async () => {
+    setIsSyncing(true);
+    try {
+      await syncQueuedChanges();
+    } catch (error) {
+      console.error("Manual sync failed", error);
+      setSaveStatus("error");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDiscardClick = () => {
+    setIsConfirmingDiscard(true);
+  };
+
+  const confirmDiscard = async () => {
+    try {
+      await clearQueue(documentId);
+      setPendingChanges([]);
+    } catch (error) {
+      console.error("Failed to discard offline changes", error);
+    } finally {
+      setIsConfirmingDiscard(false);
+    }
+  };
+
+  const cancelDiscard = () => {
+    setIsConfirmingDiscard(false);
+  };
 
   if (!editor) return null;
 
@@ -191,13 +284,41 @@ export default function TipTapEditor({
       {pendingChanges.length > 0 && (
         <div className="flex items-center justify-between rounded bg-yellow-100 p-4 text-yellow-800">
           <span className="font-medium">⚠️ Offline changes found</span>
-          <div className="flex gap-2">
-            <button className="rounded bg-yellow-600 px-3 py-1 text-sm text-white hover:bg-yellow-700">
-              Sync
-            </button>
-            <button className="rounded bg-transparent px-3 py-1 text-sm text-yellow-800 hover:bg-yellow-200">
-              Discard
-            </button>
+          <div className="flex items-center gap-2">
+            {isConfirmingDiscard ? (
+              <>
+                <span className="text-sm">Discard offline changes?</span>
+                <button
+                  onClick={confirmDiscard}
+                  className="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+                >
+                  Yes, discard
+                </button>
+                <button
+                  onClick={cancelDiscard}
+                  className="rounded bg-transparent px-3 py-1 text-sm text-yellow-800 hover:bg-yellow-200"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleSyncClick}
+                  disabled={isSyncing}
+                  className="rounded bg-yellow-600 px-3 py-1 text-sm text-white hover:bg-yellow-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSyncing ? "Syncing..." : "Sync"}
+                </button>
+                <button
+                  onClick={handleDiscardClick}
+                  disabled={isSyncing}
+                  className="rounded bg-transparent px-3 py-1 text-sm text-yellow-800 hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Discard
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -214,23 +335,31 @@ export default function TipTapEditor({
         }`}
       />
 
-      <div className="px-3"><span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"><span className="size-1.5 rounded-full bg-blue-500" />
-        {saveStatus === "idle" && "Live Sync Active"}
-        {saveStatus === "saving" && "Saving Title..."}
-        {saveStatus === "saved" && "Title Saved ✓"}
-        {saveStatus === "error" && (
-          <span className="text-red-500">
-            Failed to save title
-          </span>
-        )}
-      </span></div>
+      <div className="px-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+          <span className="size-1.5 rounded-full bg-blue-500" />
+          {saveStatus === "idle" && "Live Sync Active"}
+          {saveStatus === "saving" && "Saving Title..."}
+          {saveStatus === "offline" && (
+            <span className="text-yellow-600">
+              Offline • Changes queued
+            </span>
+          )}
+          {saveStatus === "saved" && "Title Saved ✓"}
+          {saveStatus === "error" && (
+            <span className="text-red-500">
+              Failed to save title
+            </span>
+          )}
+        </span>
+      </div>
 
       <div className="min-h-[500px] overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-shadow focus-within:border-blue-200 focus-within:shadow-md">
-          {editable && <AiToolbar editor={editor} />}
+        {editable && <AiToolbar editor={editor} />}
 
-          <div className="p-6 sm:p-10">
-              <EditorContent editor={editor} />
-          </div>
+        <div className="p-6 sm:p-10">
+          <EditorContent editor={editor} />
+        </div>
       </div>
     </div>
   );

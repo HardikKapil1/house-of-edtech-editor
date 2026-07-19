@@ -16,6 +16,9 @@ export async function queueChange(documentId: string, title: string | null, cont
     updatedAt: Date.now(),
   });
 }
+export async function clearQueue(documentId: string) {
+  await db.pendingChanges.where("documentId").equals(documentId).delete();
+}
 
 /**
  * Sends a document's queued change to the API and removes it only after the
