@@ -58,14 +58,25 @@ export default function PresenceIndicator({ provider }: Props) {
     provider.awareness.on("change", updateUsers);
 
     return () => {
-      provider.awareness.off("change", updateUsers);
+        provider.awareness.off("change", updateUsers);
     };
   }, [provider]);
 
   if (users.length === 0) return null;
 
+  // Find names that appear more than once
+  const duplicateNames = new Set(
+    users
+      .map((user) => user.name)
+      .filter(
+        (name): name is string =>
+          !!name &&
+          users.filter((user) => user.name === name).length > 1
+      )
+  );
+
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3">
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
       <span className="text-sm font-medium text-muted-foreground">
         {users.length === 1
           ? "Only you are editing"
@@ -73,24 +84,33 @@ export default function PresenceIndicator({ provider }: Props) {
       </span>
 
       <div className="flex flex-wrap items-center gap-2">
-        {users.map((user) => (
-          <div
-            key={user.id ?? user.email ?? user.clientId}
-            className="flex items-center gap-2 rounded-full border bg-background px-3 py-1 shadow-sm"
-            title={user.name ?? "Anonymous"}
-          >
-            <div
-              className="h-3 w-3 rounded-full"
-              style={{
-                backgroundColor: user.color ?? "#94A3B8",
-              }}
-            />
+        {users.map((user) => {
+          const displayName =
+            duplicateNames.has(user.name ?? "")
+              ? `${user.name} (${user.email?.split("@")[0] ?? "Unknown"})`
+              : user.name ??
+                user.email?.split("@")[0] ??
+                "Anonymous";
 
-            <span className="text-xs font-medium">
-              {user.name ?? "Anonymous"}
-            </span>
-          </div>
-        ))}
+          return (
+            <div
+              key={user.id ?? user.email ?? user.clientId}
+              className="flex items-center gap-2 rounded-full border bg-background px-3 py-1 shadow-sm"
+              title={user.email ?? user.name ?? "Anonymous"}
+            >
+              <div
+                className="h-3 w-3 rounded-full"
+                style={{
+                  backgroundColor: user.color ?? "#94A3B8",
+                }}
+              />
+
+              <span className="text-xs font-medium">
+                {displayName}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
