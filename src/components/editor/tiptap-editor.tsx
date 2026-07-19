@@ -9,6 +9,7 @@ import { flushQueue, queueChange } from "@/lib/sync-queue";
 import { Collaboration } from "@tiptap/extension-collaboration";
 import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
 import { createCollaborationProvider } from "@/lib/collaboration";
+import AiToolbar from "./ai-toolbar";
 
 interface TipTapEditorProps {
   documentId: string;
@@ -195,8 +196,12 @@ export default function TipTapEditor({
         )}
       </div>
 
-      <div className="min-h-[500px] rounded-lg border p-6">
-        <EditorContent editor={editor} />
+      <div className="min-h-[500px] rounded-lg border">
+          {editable && <AiToolbar editor={editor} />}
+
+          <div className="p-6">
+              <EditorContent editor={editor} />
+          </div>
       </div>
     </div>
   );

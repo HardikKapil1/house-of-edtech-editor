@@ -1,33 +1,31 @@
-export function getPrompt(action: string, text: string) {
+export type AiAction = "rewrite" | "summarize" | "continue" | "fix-grammar";
+
+/**
+ * Returns a prompt based on the requested AI action.
+ */
+export function getPrompt(action: AiAction, text: string): string {
   switch (action) {
     case "rewrite":
-      return `Rewrite the following text while preserving its meaning:\n\n${text}`;
+      return `Rewrite the following text while preserving its original meaning. Return only the rewritten text.
+
+${text}`;
 
     case "summarize":
-      return `Summarize this text:\n\n${text}`;
+      return `Summarize the following text in a concise way. Return only the summary.
+
+${text}`;
 
     case "continue":
-      return `Continue writing naturally from:\n\n${text}`;
+      return `Continue writing naturally from the following text.
 
-    case "grammar":
-      return `Correct grammar only. Do not change meaning:\n\n${text}`;
+${text}`;
 
-    case "explain":
-      return `Explain this text in simple words:\n\n${text}`;
+    case "fix-grammar":
+      return `Fix grammar, punctuation and spelling without changing the meaning.
 
-    case "tone":
-      return `Rewrite this text in a professional tone:\n\n${text}`;
-
-    case "expand":
-      return `Expand on this text with more details:\n\n${text}`;
-
-    case "shorten":
-      return `Shorten this text while keeping the main points:\n\n${text}`;
-    
-    case "rephrase":
-      return `Rephrase this text in a different way:\n\n${text}`;
+${text}`;
 
     default:
-      throw new Error("Invalid action");
+      throw new Error("Unsupported AI action");
   }
 }
