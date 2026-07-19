@@ -10,6 +10,8 @@ import { Collaboration } from "@tiptap/extension-collaboration";
 import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
 import { createCollaborationProvider } from "@/lib/collaboration";
 import AiToolbar from "./ai-toolbar";
+import PresenceIndicator from "./presence-indicator";
+
 
 interface TipTapEditorProps {
   documentId: string;
@@ -176,7 +178,9 @@ export default function TipTapEditor({
           </div>
         </div>
       )}
-
+      <div className="flex items-center gap-3">
+        <PresenceIndicator provider={provider} />
+      </div>
       <input
         value={title}
         onChange={handleTitleChange}
