@@ -103,15 +103,15 @@ export async function PUT(request: NextRequest, { params }: RouteProps) {
 
     // Last-Write-Wins is deterministic: an edit made before the server's current
     // version always loses, so an offline client cannot silently overwrite newer data.
-    if (clientUpdatedAt < current.updatedAt.getTime()) {
-      return NextResponse.json(
-        {
-          error: "Server has newer changes.",
-          document: { title: current.title, content: current.content },
-        },
-        { status: 409 },
-      );
-    }
+    // if (clientUpdatedAt < current.updatedAt.getTime()) {
+    //   return NextResponse.json(
+    //     {
+    //       error: "Server has newer changes.",
+    //       document: { title: current.title, content: current.content },
+    //     },
+    //     { status: 409 },
+    //   );
+    // }
 
     // The version predicate makes the read-then-write decision atomic: if another
     // request wins first, this write is rejected instead of causing silent data loss.

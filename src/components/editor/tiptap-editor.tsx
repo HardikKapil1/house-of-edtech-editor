@@ -28,7 +28,7 @@ interface PendingChange {
   content: JSONContent;
 }
 
-const cursorColors = ['#958DF1', '#F98181', '#FBBC88', '#FAF594', '#70CFF8', '#94FADB', '#B9F18D'];
+const cursorColors = ['#958DF1', '#F98181', '#FBBC88', '#FAF594', '#70CFF8', '#94FADB', '#B9F18D0', '#E6A0F8', '#FF99C8', '#FFB347', '#FF6961', '#FFB6C1', '#FFD700', '#ADFF2F', '#00CED1', '#1E90FF', '#BA55D3', '#FF4500', '#32CD32', '#00FA9A', '#FF6347', '#40E0D0', '#FF1493', '#7B68EE', '#00BFFF', '#FF69B4', '#8A2BE2', '#00FF7F', '#FF8C00', '#DA70D6', '#00FFFF', '#FF4500', '#ADFF2F', '#1E90FF', '#FF1493', '#32CD32'];
 
 function getUserColor(identifier?: string | null) {
   if (!identifier) return cursorColors[0];
@@ -130,43 +130,59 @@ export default function TipTapEditor({
     };
   }, [documentId]);
 
-  const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
     if (!editable) return;
 
-    const newTitle = e.target.value;
-    setTitle(newTitle);
+    if (title === initialTitle) return;
 
-    try {
-      setSaveStatus("saving");
+    const timer = setTimeout(async () => {
+      try {
+        setSaveStatus("saving");
 
-      if (!navigator.onLine) {
-        await queueChange(documentId, newTitle, content);
+        if (!navigator.onLine) {
+          await queueChange(documentId, title, content);
+          setSaveStatus("saved");
+          return;
+        }
+
+        const response = await fetch(`/api/documents/${documentId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title,
+          }),
+        });
+
+        if (response.status === 409) {
+          toast.info(
+            "Another change was detected. Please reload to get the latest version."
+          );
+          setSaveStatus("error");
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to save title");
+        }
+
         setSaveStatus("saved");
-        return;
-      }
-
-      const response = await fetch(`/api/documents/${documentId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle, clientUpdatedAt: Date.now() }),
-      });
-
-      if (response.status === 409) {
-        toast.info("Server has newer changes. Reload the page to see them.");
+      } catch (error) {
+        console.error(error);
         setSaveStatus("error");
-        return;
       }
+    }, 500);
 
-      if (!response.ok) {
-        throw new Error("Failed to save title");
-      }
+    return () => clearTimeout(timer);
+  }, [
+    title,
+    editable,
+    documentId,
+    content,
+    initialTitle,
+  ]);
 
-      setSaveStatus("saved");
-    } catch (error) {
-      console.error("Failed to save title", error);
-      setSaveStatus("error");
-    }
-  };
 
   if (!editor) return null;
 
@@ -190,7 +206,7 @@ export default function TipTapEditor({
       </div>
       <input
         value={title}
-        onChange={handleTitleChange}
+        onChange={(e) => setTitle(e.target.value)}
         readOnly={!editable}
         placeholder="Untitled Document"
         className={`w-full rounded-xl border border-transparent bg-transparent px-3 py-2 text-3xl font-semibold tracking-tight outline-none transition focus:bg-blue-50/50 focus:ring-2 focus:ring-blue-500/20 sm:text-4xl ${
@@ -203,7 +219,9 @@ export default function TipTapEditor({
         {saveStatus === "saving" && "Saving Title..."}
         {saveStatus === "saved" && "Title Saved ✓"}
         {saveStatus === "error" && (
-          <span className="text-red-500">Failed to save (Offline mode)</span>
+          <span className="text-red-500">
+            Failed to save title
+          </span>
         )}
       </span></div>
 
