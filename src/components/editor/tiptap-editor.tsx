@@ -48,7 +48,7 @@ export default function TipTapEditor({
   const [saveStatus, setSaveStatus] = useState<string>("idle");
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const { data: session } = useSession();
-
+// eslint-disable-next-line react-hooks/set-state-in-effect
   const yjsRef = useRef(createCollaborationProvider(documentId));
   const { ydoc, provider } = yjsRef.current;
   useEffect(() => {
