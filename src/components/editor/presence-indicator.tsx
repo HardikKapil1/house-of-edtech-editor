@@ -1,3 +1,4 @@
+// src/components/editor/presence-indicator.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -13,29 +14,27 @@ interface Props {
   provider: WebsocketProvider;
 }
 
-/**
- * Displays users currently connected to this document.
- *
- * Uses the Yjs Awareness protocol. Awareness stores ephemeral
- * presence information (name, cursor, color) and is NOT part
- * of the shared document content.
- */
 export default function PresenceIndicator({ provider }: Props) {
   const [users, setUsers] = useState<PresenceUser[]>([]);
 
   useEffect(() => {
     const updateUsers = () => {
-  const states = Array.from(provider.awareness.getStates().entries());
+      const states = Array.from(provider.awareness.getStates().entries());
 
-  setUsers(
-    states
-      .map(([clientId, state]: any) => ({
-        clientId,
-        ...state.user,
-      }))
-      .filter((user) => user.name)
-  );
-};
+      setUsers(
+        states
+          .map(([clientId, state]) => {
+            const awarenessState = state as {
+              user?: { name?: string; color?: string };
+            };
+            return {
+              clientId,
+              ...awarenessState.user,
+            } as PresenceUser;
+          })
+          .filter((user) => user.name)
+      );
+    };
 
     updateUsers();
 

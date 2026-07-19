@@ -1,3 +1,4 @@
+// src/components/editor/ai-toolbar.tsx
 "use client";
 
 import { useState } from "react";
@@ -20,6 +21,38 @@ type Action =
     | "summarize"
     | "continue"
     | "fix-grammar";
+
+// FIX: Moved outside the main component to prevent React re-creation on every render
+interface ToolbarButtonProps {
+    action: Action;
+    label: string;
+    icon: React.ReactNode;
+    loadingAction: Action | null;
+    onClick: (action: Action) => void;
+}
+
+function ToolbarButton({
+    action,
+    label,
+    icon,
+    loadingAction,
+    onClick,
+}: ToolbarButtonProps) {
+    return (
+        <button
+            onClick={() => onClick(action)}
+            disabled={loadingAction !== null}
+            className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+            {loadingAction === action ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+                icon
+            )}
+            {label}
+        </button>
+    );
+}
 
 /**
  * AI Toolbar
@@ -90,54 +123,38 @@ export default function AiToolbar({ editor }: Props) {
         }
     }
 
-    const Button = ({
-        action,
-        label,
-        icon,
-    }: {
-        action: Action;
-        label: string;
-        icon: React.ReactNode;
-    }) => (
-        <button
-            onClick={() => runAction(action)}
-            disabled={loadingAction !== null}
-            className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-            {loadingAction === action ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-                icon
-            )}
-
-            {label}
-        </button>
-    );
-
     return (
         <div className="sticky top-0 z-20 flex flex-wrap gap-2 border-b bg-gray-50 p-3">
-            <Button
+            <ToolbarButton
                 action="rewrite"
                 label="Rewrite"
                 icon={<Sparkles size={16} />}
+                loadingAction={loadingAction}
+                onClick={runAction}
             />
 
-            <Button
+            <ToolbarButton
                 action="summarize"
                 label="Summarize"
                 icon={<FileText size={16} />}
+                loadingAction={loadingAction}
+                onClick={runAction}
             />
 
-            <Button
+            <ToolbarButton
                 action="continue"
                 label="Continue"
                 icon={<PenSquare size={16} />}
+                loadingAction={loadingAction}
+                onClick={runAction}
             />
 
-            <Button
+            <ToolbarButton
                 action="fix-grammar"
                 label="Fix Grammar"
                 icon={<SpellCheck size={16} />}
+                loadingAction={loadingAction}
+                onClick={runAction}
             />
         </div>
     );

@@ -11,10 +11,16 @@ interface ActivityDialogProps {
   documentId: string;
 }
 
+type ActivityMetadata = {
+  version?: number;
+  restoredVersion?: number;
+  [key: string]: unknown;
+};
+
 type Activity = {
   id: string;
   action: string;
-  metadata: Record<string, any> | null;
+  metadata: ActivityMetadata | null;
   createdAt: string;
   user: {
     name: string | null;
@@ -40,6 +46,7 @@ function getActionText(log: Activity) {
       return "performed an unknown action";
   }
 }
+
 export function ActivityDialog({ open, onOpenChange, documentId }: ActivityDialogProps) {
   const [activity, setActivity] = React.useState<Activity[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -64,7 +71,7 @@ export function ActivityDialog({ open, onOpenChange, documentId }: ActivityDialo
         }
       };
 
-      fetchActivity();
+      void fetchActivity();
     }
   }, [open, documentId]);
 

@@ -1,92 +1,151 @@
 # House of EdTech Editor
 
-## Overview
+> A local-first collaborative editor that combines real-time CRDT writing with durable, permissioned application data.
 
-House of EdTech Editor is a local-first collaborative document editor built with Next.js, TypeScript, Prisma, PostgreSQL, Tiptap, and Yjs. It supports real-time multi-user document editing, offline title updates, document sharing with role-based permissions, snapshots, audit history, and server-side conflict protection.
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org/) [![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)](https://prisma.io/) [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org/) [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss)](https://tailwindcss.com/) [![Auth.js](https://img.shields.io/badge/Auth.js-5-black)](https://authjs.dev/) [![Yjs](https://img.shields.io/badge/Yjs-CRDT-6E57FF)](https://yjs.dev/) [![Gemini AI](https://img.shields.io/badge/Gemini_AI-Google-4285F4?logo=google)](https://ai.google.dev/)
 
-The design separates the concerns that need real-time merging from those that need durable application data. Document bodies are collaboratively edited through Yjs, while document metadata, access control, snapshots, and audit records are persisted through Next.js API routes and PostgreSQL.
+A portfolio-grade Next.js App Router project for multi-user rich-text editing, offline-safe metadata changes, sharing, snapshots, audit history, and Gemini-powered writing assistance.
+
+## Screenshots
+
+| Dashboard | Collaborative editor |
+| --- | --- |
+| `![Dashboard](./docs/screenshots/dashboard.png)` | `![Editor](./docs/screenshots/editor.png)` |
+
+> Replace these placeholders with project screenshots.
+
+## Features
+
+- [x] Tiptap rich-text collaboration through Yjs and a dedicated `y-websocket` server
+- [x] Dexie/IndexedDB offline queue for durable document metadata
+- [x] Automatic CRDT merges for concurrent document-body changes
+- [x] Version-guarded conflict protection for durable updates
+- [x] Auth.js credentials authentication with bcrypt password hashing
+- [x] Server-enforced Owner, Editor, and Viewer roles
+- [x] Sharing, snapshots, restore workflow, and activity history
+- [x] Gemini actions: rewrite, summarize, continue, and fix grammar
 
 ## Architecture
 
-```text
-                         ┌────────────────────────────┐
-                         │      Next.js client         │
-                         │ Tiptap + Yjs + Dexie        │
-                         └─────────────┬──────────────┘
-                                       │
-            real-time document updates │ WebSocket
-                                       ▼
-                         ┌────────────────────────────┐
-                         │ y-websocket server          │
-                         │ Railway in production       │
-                         └────────────────────────────┘
-
-                         ┌────────────────────────────┐
-                         │      Next.js client         │
-                         └─────────────┬──────────────┘
-                                       │ HTTP
-                                       ▼
-                         ┌────────────────────────────┐
-                         │ Next.js App Router API      │
-                         │ Auth, validation, versions  │
-                         └─────────────┬──────────────┘
-                                       │ Prisma
-                                       ▼
-                         ┌────────────────────────────┐
-                         │ PostgreSQL                  │
-                         │ Documents, users, snapshots │
-                         │ memberships, audit logs     │
-                         └────────────────────────────┘
+```mermaid
+flowchart TB
+  C["Next.js client<br/>Tiptap - Yjs - Dexie"]
+  W["y-websocket service<br/>CRDT synchronization"]
+  A["Next.js API<br/>auth - validation - permissions"]
+  P[("PostgreSQL / Prisma")]
+  G["Gemini API"]
+  C <-->|WebSocket| W
+  C <-->|HTTPS| A
+  A --> P
+  A --> G
 ```
 
-- **Client:** Tiptap provides the editor UI; Yjs represents and merges collaborative body state; Dexie stores pending offline changes in IndexedDB.
-- **Real-time collaboration:** the browser connects to a separate `y-websocket` server. Local development uses the included WebSocket command; production points `NEXT_PUBLIC_WS_URL` at the Railway deployment.
-- **Application persistence:** the client calls Next.js route handlers for document metadata, permissions, snapshots, and audit history. Prisma persists this durable state in PostgreSQL.
-- **Authentication:** NextAuth credentials authentication establishes the application user identity used by server-side permission checks.
+The design separates the concerns that need real-time merging from durable application data. Tiptap renders the editor and Yjs represents and merges body state over the standalone WebSocket service. Next.js Route Handlers persist metadata, memberships, snapshots, and audit records to PostgreSQL through Prisma. Auth.js provides the identity used by every server-side permission check.
 
-## Local-first and offline sync
+```mermaid
+sequenceDiagram
+  participant A as Collaborator A
+  participant B as Collaborator B
+  participant W as y-websocket
+  participant API as Next.js API
+  participant DB as PostgreSQL
+  A->>W: Yjs update
+  W-->>B: Merged CRDT state
+  A->>API: Metadata or snapshot request
+  API->>DB: Validate, authorize, persist
+  DB-->>API: Result
+```
 
-The client treats an unavailable network as a temporary state rather than a reason to discard user work.
+## Technology stack
 
-1. When a title change occurs while the browser is offline, the client writes the latest change to Dexie's `pendingChanges` table instead of attempting a network request.
-2. The document ID is the queued row's key, so repeated offline edits replace the older queued value: only the newest local state is retried.
-3. The editor listens for the browser's `online` event. On reconnection, it flushes the queued change to `PUT /api/documents/[id]`.
-4. A queue entry is deleted only after a successful server response. Network errors and conflicts remain visible for a later retry or user action.
+| Area | Technology | Purpose |
+| --- | --- | --- |
+| Framework | Next.js 16, React 19 | App Router and Route Handlers |
+| Language | TypeScript 5 | Type-safe application code |
+| Editor | Tiptap | Rich-text editing |
+| Collaboration | Yjs, `y-websocket` | CRDT merging and WebSocket sync |
+| Offline | Dexie / IndexedDB | Unsynced metadata queue |
+| Data | PostgreSQL, Prisma | Documents, users, memberships, snapshots, logs |
+| Auth | Auth.js (NextAuth v5), bcryptjs | Credentials and password hashing |
+| Validation | Zod | Mutation validation |
+| UI | Tailwind CSS 4, shadcn/ui, Lucide | Interface |
+| AI | Google Gemini / `@google/genai` | Writing assistance |
 
-This provides a practical local-first flow for document metadata while Yjs continues to manage collaborative body updates.
+## Local-first architecture and offline synchronization
+
+The client treats a lost connection as temporary, rather than discarding user work. This local-first flow applies to durable document metadata; Yjs continues to manage collaborative body updates.
+
+1. When a title/content update cannot be sent, the latest state is written to Dexie's IndexedDB-backed `pendingChanges` table.
+2. The document ID is the queue key, so repeated offline edits replace the older queued change.
+3. On the browser `online` event, the client retries `PUT /api/documents/:id`.
+4. A queue entry is deleted only after a successful response. Network errors and `409 Conflict` responses remain for retry or user action.
 
 ## Conflict resolution
 
 ### Document body: Yjs CRDT
 
-Document body content is handled by Yjs through the WebSocket collaboration channel. Yjs is a CRDT, so concurrent text edits are merged automatically at character and structure level instead of asking one writer to overwrite another. This is the appropriate model for the document body because multiple people can edit the same text at the same time.
+Document body content is synchronized through Yjs over WebSocket. As a CRDT, Yjs automatically merges concurrent text and structure edits at character and document-structure level instead of allowing one writer to overwrite another.
 
-### Document title: timestamp and version-based Last-Write-Wins
+### Durable metadata: timestamp and version-guarded Last-Write-Wins
 
-Titles are not collaboratively edited character-by-character. A title is short metadata with a single input field, so the application uses a simpler durable-write policy:
+Titles and persisted content deliberately use durable writes rather than character-level CRDT collaboration:
 
-1. The client sends `clientUpdatedAt` with each title update.
-2. The API reads the document's current `updatedAt` and `version`.
-3. If the client timestamp is older than the server timestamp, the API returns **HTTP 409 Conflict** with the server's current title and content rather than overwriting newer data.
-4. For an eligible update, the API increments `version` and performs the write using the previously read version as a guard. If another update wins in between, this request also becomes a 409 response.
+1. The client sends `clientUpdatedAt`.
+2. The API reads the current `updatedAt` and `version`.
+3. If the client timestamp is older, the API returns **HTTP 409 Conflict** with current server title and content.
+4. Eligible writes increment `version` using the previously-read version as an optimistic-concurrency guard. A competing winning write also causes `409`.
 
-This is deterministic Last-Write-Wins for metadata, not a CRDT. It prevents silent data loss while keeping title updates simple, and the client prompts the user to reload when the server has newer changes.
+This deterministic Last-Write-Wins policy prevents an offline client from silently overwriting newer server data and lets the UI request a reload.
 
 ## Security and data isolation
 
-- **Request validation:** mutation payloads are validated with Zod before authentication or database operations proceed.
-- **Payload cap:** document update content is serialized and limited to fewer than 500,000 characters (about 500KB). Rejecting oversized content before it reaches Prisma and persistence prevents maliciously large update payloads from driving expensive processing and memory exhaustion.
-- **Server-side authorization:** `Owner`, `Editor`, and `Viewer` roles are represented by `DocumentMember`. Route handlers check permissions on the server; client-side UI state is not treated as authorization.
-- **Tenant isolation:** document access is scoped through membership lookups using both document ID and current user ID. Prisma queries and mutations operate only after the appropriate membership and capability (`canView`, `canEdit`, or `canDelete`) are confirmed.
-- **Auditability:** document updates, snapshots, restores, sharing, and deletes create audit-log records for traceability.
+- **Validated mutations:** Zod validates registration and document-update payloads before persistence.
+- **Payload cap:** serialized content must be below 500,000 characters (about 500 KB), reducing processing and storage pressure from oversized requests.
+- **Server authorization:** `OWNER`, `EDITOR`, and `VIEWER` are stored in `DocumentMember`; routes enforce view, edit, delete, and share permissions.
+- **Tenant isolation:** membership is resolved using document ID and authenticated user ID before document data is read or changed.
+- **Credential safety:** bcrypt hashes passwords; Auth.js signs JWT sessions with `AUTH_SECRET`.
+- **Auditability:** creation, updates, sharing, snapshot creation, and deletion create actor-linked audit records.
 
 ## Version history
 
-The `Snapshot` model stores immutable title/content checkpoints per document, with a unique version number for each document. Users can create snapshots, inspect history, and restore a selected snapshot through permission-checked API routes.
+`Snapshot` stores immutable title/content checkpoints with a version unique to each document. Editors create snapshots; viewers can inspect the history.
 
-A restore is a durable PostgreSQL operation: it creates the next snapshot version and writes the selected title/content back to the document inside the server-side restore flow. It does not attempt to manually merge a historical snapshot into an in-flight Yjs transaction. Clients can reload or resynchronize the persisted state, after which live editing continues through Yjs; this keeps historical restoration separate from the CRDT's live collaborative state and avoids corrupting the collaboration model.
+Restore is a durable PostgreSQL transaction: the server first saves the current document as the next snapshot version, then writes the selected title and content. It does not manually merge history into an in-flight Yjs transaction. Clients can reload or resynchronize the persisted state and then continue live editing through Yjs, keeping historical recovery separate from the CRDT model.
 
-## Setup
+## API overview
+
+All document routes require authentication and enforce membership server-side.
+
+| Endpoint | Methods | Description |
+| --- | --- | --- |
+| `/api/auth/[...nextauth]` | Auth.js handlers | Credentials session handling |
+| `/api/register` | `POST` | Register a bcrypt-hashed user |
+| `/api/documents` | `POST` | Create document and owner membership |
+| `/api/documents/:id` | `GET`, `PUT`, `DELETE` | Fetch, guarded update, or delete |
+| `/api/documents/:id/share` | `POST` | Owner shares with Editor or Viewer |
+| `/api/documents/:id/snapshots` | `GET`, `POST` | List or create snapshots |
+| `/api/documents/:id/snapshots/:snapshotId` | `GET` | Retrieve a snapshot |
+| `/api/documents/:id/snapshots/:snapshotId/restore` | `POST` | Back up current state and restore |
+| `/api/documents/:id/activity` | `GET` | Get document activity |
+| `/api/ai` | `POST` | Run rewrite, summarize, continue, or fix-grammar |
+
+## Folder structure
+
+```text
+.
+|-- prisma/                 # Schema and migrations
+|-- src/
+|   |-- app/                # Pages and API routes
+|   |-- components/         # Editor, document, layout, and UI components
+|   |-- features/           # Feature-level UI
+|   |-- lib/                # Auth, Prisma, validation, Yjs, AI, offline helpers
+|   `-- generated/prisma/   # Generated client (not committed)
+|-- ws-server/server.js     # Deployable WebSocket service
+|-- public/                 # Static assets
+`-- package.json
+```
+
+## Getting started
 
 ### Prerequisites
 
@@ -96,23 +155,15 @@ A restore is a durable PostgreSQL operation: it creates the next snapshot versio
 
 ### Environment variables
 
-Create a `.env` file in the project root:
+Create `.env` in the repository root:
 
-```env
-# PostgreSQL connection used by Prisma
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/house_of_edtech"
-
-# NextAuth signing secret
-AUTH_SECRET="replace-with-a-long-random-secret"
-
-# y-websocket endpoint. Defaults to ws://localhost:1234 if omitted.
-NEXT_PUBLIC_WS_URL="ws://localhost:1234"
-
-# Optional: required only for the Gemini-powered AI feature
-GEMINI_API_KEY="your-gemini-api-key"
-```
-
-### Install and migrate
+| Variable | Required | Description | Example |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection used by Prisma | `postgresql://USER:PASSWORD@localhost:5432/house_of_edtech` |
+| `AUTH_SECRET` | Yes | Long random secret for Auth.js JWT sessions | `replace-with-a-long-random-secret` |
+| `AUTH_URL` | Recommended | Canonical Auth.js application URL | `http://localhost:3000` |
+| `NEXT_PUBLIC_WS_URL` | No | Yjs WebSocket URL; defaults to `ws://localhost:1234` | `ws://localhost:1234` |
+| `GEMINI_API_KEY` | For AI | API key for Gemini editor actions | `your-gemini-api-key` |
 
 ```bash
 npm install
@@ -120,29 +171,43 @@ npx prisma migrate dev
 npx prisma generate
 ```
 
-### Run the WebSocket server separately
-
-Start the Yjs WebSocket server in one terminal:
+Run these in separate terminals:
 
 ```bash
 npm run start-ws
-```
-
-For production, deploy the WebSocket service separately (for example, on Railway) and set `NEXT_PUBLIC_WS_URL` to its secure WebSocket URL, such as `wss://your-service.up.railway.app`.
-
-### Run Next.js
-
-In another terminal:
-
-```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## What I would do with more time
+## Deployment
 
-- Use CRDT-based title collaboration as well, so title edits can merge character-by-character instead of using Last-Write-Wins metadata updates.
-- Add automated end-to-end coverage with Playwright for offline edits, reconnect flushing, HTTP 409 conflicts, snapshot restore, and multi-user collaboration.
-- Expand presence and awareness indicators so collaborators can clearly see who is online, editing, and where their cursor is located.
-- Add rate limiting and request throttling to synchronization and mutation endpoints to further protect shared documents from abuse.
+Deploy the Next.js application to a Node-compatible host such as Vercel, with managed PostgreSQL available through `DATABASE_URL`. Apply Prisma migrations during deployment and configure `AUTH_SECRET`, `AUTH_URL`, and, when AI is enabled, `GEMINI_API_KEY`.
+
+Deploy the WebSocket service separately because it needs long-lived connections outside the Next.js app process. `ws-server/` binds to `PORT` (default `1234`) and exposes a basic HTTP health response. Deploy it to a WebSocket-capable host such as Railway, install its dependencies, and set `NEXT_PUBLIC_WS_URL` to a secure endpoint such as `wss://your-service.up.railway.app`.
+
+Before release:
+
+```bash
+npm run lint
+npm run build
+```
+
+## Future improvements
+
+- Use CRDT-backed title collaboration for character-level title merges.
+- Add Playwright coverage for offline retries, `409` conflicts, restores, and multi-user sessions.
+- Expand awareness indicators with collaborator state and cursor locations.
+- Add rate limiting and request throttling.
+- Add production observability for the WebSocket service.
+
+## License
+
+No license has been specified. Add a license file, such as MIT, before distributing or accepting external contributions.
+
+## Author
+
+Created by **Your Name**.
+
+- GitHub: [@your-github-username](https://github.com/your-github-username)
+- LinkedIn: [Your Name](https://www.linkedin.com/in/your-linkedin-username/)

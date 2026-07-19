@@ -1,7 +1,7 @@
 // src/components/editor/tiptap-editor.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { JSONContent } from "@tiptap/core";
@@ -19,6 +19,12 @@ interface TipTapEditorProps {
   initialTitle: string;
   content: JSONContent;
   editable: boolean;
+}
+
+interface PendingChange {
+  documentId: string;
+  title: string;
+  content: JSONContent;
 }
 
 const cursorColors = ['#958DF1', '#F98181', '#FBBC88', '#FAF594', '#70CFF8', '#94FADB', '#B9F18D'];
@@ -40,11 +46,10 @@ export default function TipTapEditor({
 }: TipTapEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<string>("idle");
-  const [pendingChanges, setPendingChanges] = useState<any[]>([]);
+  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const { data: session } = useSession();
 
-  const yjsRef = useRef(createCollaborationProvider(documentId));
-  const { ydoc, provider } = yjsRef.current;
+  const [{ ydoc, provider }] = useState(() => createCollaborationProvider(documentId));
 
   useEffect(() => {
     return () => {
@@ -56,10 +61,10 @@ export default function TipTapEditor({
   useEffect(() => {
     const fetchPendingChanges = async () => {
       try {
-        const changes = await db.pendingChanges
+        const changes = (await db.pendingChanges
           .where("documentId")
           .equals(documentId)
-          .toArray();
+          .toArray()) as PendingChange[];
 
         if (changes && changes.length > 0) {
           setPendingChanges(changes);
@@ -103,6 +108,7 @@ export default function TipTapEditor({
   useEffect(() => {
     editor?.setEditable(editable);
   }, [editor, editable]);
+
   useEffect(() => {
     const handleOnline = () => {
       void flushQueue(documentId)
@@ -123,10 +129,6 @@ export default function TipTapEditor({
     };
   }, [documentId]);
 
-  /**
-   * Updates the visible title and either saves it immediately or queues it
-   * offline, so typing remains responsive regardless of network availability.
-   */
   const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editable) return;
 
