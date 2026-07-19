@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, History } from "lucide-react";
+import { Activity } from "lucide-react";
 
 import ShareDialog from "./share-dialog";
 import HistoryDialog from "./history-dialog";
