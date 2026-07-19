@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 
+interface PresenceUser {
+  clientId: number;
+  name?: string;
+  color?: string;
+}
+
 interface Props {
   provider: WebsocketProvider;
 }
@@ -15,18 +21,21 @@ interface Props {
  * of the shared document content.
  */
 export default function PresenceIndicator({ provider }: Props) {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<PresenceUser[]>([]);
 
   useEffect(() => {
     const updateUsers = () => {
-      const states = Array.from(provider.awareness.getStates().values());
+  const states = Array.from(provider.awareness.getStates().entries());
 
-      setUsers(
-        states
-          .map((state: any) => state.user)
-          .filter(Boolean)
-      );
-    };
+  setUsers(
+    states
+      .map(([clientId, state]: any) => ({
+        clientId,
+        ...state.user,
+      }))
+      .filter((user) => user.name)
+  );
+};
 
     updateUsers();
 
@@ -40,22 +49,30 @@ export default function PresenceIndicator({ provider }: Props) {
   if (users.length === 0) return null;
 
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-lg border bg-gray-50 p-3">
-      <span className="text-sm font-medium text-gray-600">
-        Collaborating:
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3">
+      <span className="text-sm font-medium text-muted-foreground">
+        {users.length === 1
+          ? "Only you are editing"
+          : `${users.length} Collaborators Online`}
       </span>
 
-      <div className="flex -space-x-2">
-        {users.map((user, index) => (
+      <div className="flex flex-wrap items-center gap-2">
+        {users.map((user) => (
           <div
-            key={index}
-            title={user.name}
-            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-xs font-semibold text-white"
-            style={{
-              backgroundColor: user.color,
-            }}
+            key={user.clientId}
+            className="flex items-center gap-2 rounded-full border bg-background px-3 py-1 shadow-sm"
+            title={user.name ?? "Anonymous"}
           >
-            {user.name.charAt(0).toUpperCase()}
+            <div
+              className="h-3 w-3 rounded-full"
+              style={{
+                backgroundColor: user.color ?? "#94A3B8",
+              }}
+            />
+
+            <span className="text-xs font-medium">
+              {user.name ?? "Anonymous"}
+            </span>
           </div>
         ))}
       </div>

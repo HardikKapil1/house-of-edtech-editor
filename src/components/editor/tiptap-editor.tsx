@@ -1,3 +1,4 @@
+// src/components/editor/tiptap-editor.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -11,7 +12,7 @@ import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
 import { createCollaborationProvider } from "@/lib/collaboration";
 import AiToolbar from "./ai-toolbar";
 import PresenceIndicator from "./presence-indicator";
-
+import { useSession } from "next-auth/react";
 
 interface TipTapEditorProps {
   documentId: string;
@@ -20,8 +21,16 @@ interface TipTapEditorProps {
   editable: boolean;
 }
 
-// Array of random cursor colors
 const cursorColors = ['#958DF1', '#F98181', '#FBBC88', '#FAF594', '#70CFF8', '#94FADB', '#B9F18D'];
+
+function getUserColor(identifier?: string | null) {
+  if (!identifier) return cursorColors[0];
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash += identifier.charCodeAt(i);
+  }
+  return cursorColors[hash % cursorColors.length];
+}
 
 export default function TipTapEditor({
   documentId,
@@ -32,12 +41,11 @@ export default function TipTapEditor({
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<string>("idle");
   const [pendingChanges, setPendingChanges] = useState<any[]>([]);
+  const { data: session } = useSession();
 
-  // 1. Initialize Yjs provider synchronously
   const yjsRef = useRef(createCollaborationProvider(documentId));
   const { ydoc, provider } = yjsRef.current;
 
-  // Cleanup websocket connection when unmounting
   useEffect(() => {
     return () => {
       provider.destroy();
@@ -45,7 +53,6 @@ export default function TipTapEditor({
     };
   }, [provider, ydoc]);
 
-  // Load offline changes (Title only now, since body is managed by Yjs)
   useEffect(() => {
     const fetchPendingChanges = async () => {
       try {
@@ -65,38 +72,38 @@ export default function TipTapEditor({
     void fetchPendingChanges();
   }, [documentId]);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        // Renamed from 'history' in TipTap v3
-        undoRedo: false, 
-      }),
-      Collaboration.configure({
-        document: ydoc,
-      }),
-      // 4. Pass the provider and mock user data to the cursor extension
-      CollaborationCaret.configure({
-        provider: provider,
-        user: {
-          name: `User ${Math.floor(Math.random() * 1000)}`,
-          color: cursorColors[Math.floor(Math.random() * cursorColors.length)],
-        },
-      }),
-    ],
-    // Note: We deliberately do not pass `content: content` here. 
-    // Yjs handles the initial state injection over the websocket.
-    immediatelyRender: false,
-    editable: editable,
-  });
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({
+          undoRedo: false, 
+        }),
+        Collaboration.configure({
+          document: ydoc,
+        }),
+        CollaborationCaret.configure({
+          provider,
+          user: {
+            id: session?.user?.email,
+            name:
+              session?.user?.name ??
+              session?.user?.email?.split("@")[0] ??
+              "Anonymous",
+            email: session?.user?.email,
+            color: getUserColor(session?.user?.email),
+          },
+        }),
+      ],
+      immediatelyRender: false,
+      editable: editable,
+    },
+    [session?.user?.email, session?.user?.name]
+  );
 
   useEffect(() => {
     editor?.setEditable(editable);
   }, [editor, editable]);
-
-  // Queues offline title edits to be sent as soon as the browser reports that
-  // it has reconnected, preventing a user's latest change from being lost.
   useEffect(() => {
-    // Attempts the retained local update after the browser reports a connection.
     const handleOnline = () => {
       void flushQueue(documentId)
         .then((response) => {
@@ -126,7 +133,6 @@ export default function TipTapEditor({
     const newTitle = e.target.value;
     setTitle(newTitle);
 
-    // Save title to the database (Autosave for document body is disabled per Phase 5)
     try {
       setSaveStatus("saving");
 
@@ -139,12 +145,10 @@ export default function TipTapEditor({
       const response = await fetch(`/api/documents/${documentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        // The edit timestamp lets the server deterministically reject an older write.
         body: JSON.stringify({ title: newTitle, clientUpdatedAt: Date.now() }),
       });
 
       if (response.status === 409) {
-        // Do not silently replace a newer server edit; let the user choose to reload.
         alert("Server has newer changes — reload?");
         setSaveStatus("error");
         return;
