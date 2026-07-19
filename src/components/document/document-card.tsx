@@ -52,24 +52,24 @@ export default function DocumentCard({ id, title, updatedAt, role }: Props) {
   };
 
   return (
-    <div className="group flex items-center justify-between rounded-xl border p-5 transition hover:bg-muted">
-      <Link href={`/documents/${id}`}prefetch={false} className="flex min-w-0 flex-1 items-center gap-4">
-        <div className="flex items-center gap-4">
-          <FileText className="h-6 w-6 text-blue-500" />
+    <div className="group flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+      <Link href={`/documents/${id}`}prefetch={false} className="flex min-w-0 flex-1 items-center gap-3.5">
+        <div className="flex items-center gap-3.5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600"><FileText className="size-5" /></span>
 
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="truncate font-semibold">
+              <h2 className="truncate text-[15px] font-semibold tracking-tight">
                 {title || "Untitled Document"}
               </h2>
               {role === "VIEWER" && (
-                <span className="rounded bg-gray-200 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-gray-600">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
                   Read Only
                 </span>
               )}
             </div>
 
-            <p suppressHydrationWarning className="text-sm text-muted-foreground">
+            <p suppressHydrationWarning className="mt-1 text-xs text-muted-foreground">
               Updated{" "}
               {formatDistanceToNow(new Date(updatedAt), {
                 addSuffix: true,
@@ -87,7 +87,7 @@ export default function DocumentCard({ id, title, updatedAt, role }: Props) {
               event.stopPropagation();
               setOpen(true);
             }}
-            className="rounded-md p-2 opacity-0 transition-opacity hover:bg-red-100 group-hover:opacity-100"
+            className="rounded-lg p-2 opacity-0 transition-all hover:bg-red-50 focus-visible:opacity-100 group-hover:opacity-100"
             aria-label="Delete document"
             type="button"
           >

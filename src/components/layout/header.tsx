@@ -1,17 +1,6 @@
 "use client";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 
-export function Header() {
-  const { data: session } = useSession();
-  if (!session) return null;
-
-  return (
-    <header className="border-b px-6 py-3 flex items-center justify-between">
-      <Link href="/dashboard" className="font-bold text-lg">
-        DocEditor
-      </Link>
-      <span className="text-sm text-gray-500">{session.user?.email}</span>
-    </header>
-  );
-}
+export function Header() { const { data: session } = useSession(); if (!session) return null; const initial = (session.user?.name || session.user?.email || "U").slice(0, 1).toUpperCase(); return <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-xl"><div className="mx-auto flex h-15 max-w-7xl items-center justify-between px-4 sm:px-6"><Link href="/dashboard" className="flex items-center gap-2.5 text-sm font-semibold tracking-tight transition-opacity hover:opacity-75"><span className="grid size-8 place-items-center rounded-lg bg-blue-600 text-white shadow-sm"><FileText className="size-4" /></span>House of EdTech</Link><div className="flex items-center gap-3"><span className="hidden text-sm text-muted-foreground sm:inline">{session.user?.email}</span><span aria-label="User profile" className="grid size-8 place-items-center rounded-full border border-border bg-muted text-xs font-semibold text-muted-foreground">{initial}</span></div></div></header>; }

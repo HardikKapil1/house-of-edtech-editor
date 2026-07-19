@@ -42,7 +42,7 @@ function ToolbarButton({
         <button
             onClick={() => onClick(action)}
             disabled={loadingAction !== null}
-            className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-medium shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
             {loadingAction === action ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -124,7 +124,7 @@ export default function AiToolbar({ editor }: Props) {
     }
 
     return (
-        <div className="sticky top-0 z-20 flex flex-wrap gap-2 border-b bg-gray-50 p-3">
+        <div className="sticky top-0 z-20 flex flex-wrap gap-2 rounded-t-2xl border-b border-border bg-muted/40 p-3 backdrop-blur">
             <ToolbarButton
                 action="rewrite"
                 label="Rewrite"

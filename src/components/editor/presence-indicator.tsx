@@ -1,4 +1,3 @@
-// src/components/editor/presence-indicator.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,6 +5,8 @@ import { WebsocketProvider } from "y-websocket";
 
 interface PresenceUser {
   clientId: number;
+  id?: string;
+  email?: string;
   name?: string;
   color?: string;
 }
@@ -21,19 +22,35 @@ export default function PresenceIndicator({ provider }: Props) {
     const updateUsers = () => {
       const states = Array.from(provider.awareness.getStates().entries());
 
-      setUsers(
-        states
-          .map(([clientId, state]) => {
-            const awarenessState = state as {
-              user?: { name?: string; color?: string };
-            };
-            return {
-              clientId,
-              ...awarenessState.user,
-            } as PresenceUser;
-          })
-          .filter((user) => user.name)
-      );
+      const unique = new Map<string, PresenceUser>();
+
+      states.forEach(([clientId, state]) => {
+        const awareness = state as {
+          user?: {
+            id?: string;
+            email?: string;
+            name?: string;
+            color?: string;
+          };
+        };
+
+        if (!awareness.user) return;
+
+        const key =
+          awareness.user.id ??
+          awareness.user.email ??
+          awareness.user.name ??
+          String(clientId);
+
+        if (!unique.has(key)) {
+          unique.set(key, {
+            clientId,
+            ...awareness.user,
+          });
+        }
+      });
+
+      setUsers(Array.from(unique.values()));
     };
 
     updateUsers();
@@ -58,7 +75,7 @@ export default function PresenceIndicator({ provider }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         {users.map((user) => (
           <div
-            key={user.clientId}
+            key={user.id ?? user.email ?? user.clientId}
             className="flex items-center gap-2 rounded-full border bg-background px-3 py-1 shadow-sm"
             title={user.name ?? "Anonymous"}
           >

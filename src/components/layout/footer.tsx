@@ -1,30 +1,3 @@
-// src/components/layout/footer.tsx
 export function Footer() {
-  return (
-    <footer className="border-t mt-12 py-6">
-      <div className="max-w-5xl mx-auto px-6 flex items-center justify-center gap-2 text-sm text-gray-500">
-        <span>Built by Hardik Kapil</span>
-        <span className="text-gray-300">·</span>
-        
-        <a
-          href="https://github.com/HardikKapil1"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-gray-900 underline underline-offset-2"
-        >
-          GitHub
-        </a>
-        <span className="text-gray-300">·</span>
-        
-        <a
-          href="https://linkedin.com/in/hardik-kapil"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-gray-900 underline underline-offset-2"
-        >
-          LinkedIn
-        </a>
-      </div>
-    </footer>
-  );
+  return <footer className="mt-16 border-t border-border/80 bg-background"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-7 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>House of EdTech Editor · © {new Date().getFullYear()} Hardik Kapil</span><div className="flex items-center gap-4"><a href="https://github.com/HardikKapil1" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-foreground">GitHub</a><a href="https://linkedin.com/in/hardik-kapil" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-foreground">LinkedIn</a></div></div></footer>;
 }

@@ -1,9 +1,13 @@
-// src/components/document/activity-dialog.tsx
 "use client";
 
 import * as React from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface ActivityDialogProps {
   open: boolean;
@@ -39,7 +43,7 @@ function getActionText(log: Activity) {
     case "SNAPSHOT_RESTORED":
       return `restored Version ${log.metadata?.restoredVersion}`;
     case "DOCUMENT_SHARED":
-      return `shared the document`;
+      return "shared the document";
     case "DOCUMENT_DELETED":
       return "deleted the document";
     default:
@@ -47,64 +51,80 @@ function getActionText(log: Activity) {
   }
 }
 
-export function ActivityDialog({ open, onOpenChange, documentId }: ActivityDialogProps) {
+export function ActivityDialog({
+  open,
+  onOpenChange,
+  documentId,
+}: ActivityDialogProps) {
   const [activity, setActivity] = React.useState<Activity[]>([]);
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) {
-      const fetchActivity = async () => {
-        setLoading(true);
-        try {
-          const response = await fetch(`/api/documents/${documentId}/activity`);
-          
-          if (!response.ok) {
-            throw new Error("Failed to fetch activity");
-          }
+    if (!open) return;
 
-          const data = await response.json();
-          setActivity(data);
-        } catch (error) {
-          console.error("Failed to fetch activity:", error);
-        } finally {
-          setLoading(false);
+    const fetchActivity = async () => {
+      setLoading(true);
+
+      try {
+        const response = await fetch(`/api/documents/${documentId}/activity`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch activity");
         }
-      };
 
-      void fetchActivity();
-    }
+        const data = await response.json();
+        setActivity(data);
+      } catch (error) {
+        console.error("Failed to fetch activity:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void fetchActivity();
   }, [open, documentId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] gap-5 overflow-y-auto p-6 sm:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>Activity</DialogTitle>
+          <DialogTitle className="text-lg font-semibold tracking-tight">
+            Activity
+          </DialogTitle>
+
+          <p className="text-sm text-muted-foreground">
+            A timeline of recent document changes.
+          </p>
         </DialogHeader>
-        
+
         {loading ? (
-          <p className="text-sm text-gray-500 text-center py-4">Loading...</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            Loading...
+          </p>
+        ) : activity.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No recent activity.
+          </p>
         ) : (
-          <ul className="divide-y divide-gray-200">
-            {activity.length === 0 ? (
-               <p className="text-sm text-gray-500 py-4 text-center">No recent activity.</p>
-            ) : (
-              activity.map((item) => (
-                <li key={item.id} className="py-3">
-                  <p className="text-sm text-gray-800">
-                    <span className="font-semibold">
-                      {item.user.name || item.user.email}
-                    </span>{" "}
-                    {getActionText(item)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatDistanceToNow(new Date(item.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </p>
-                </li>
-              ))
-            )}
+          <ul className="relative space-y-1 before:absolute before:bottom-3 before:left-3.5 before:top-3 before:w-px before:bg-border">
+            {activity.map((item) => (
+              <li key={item.id} className="relative py-3 pl-9">
+                <span className="absolute left-1.5 top-4 size-4 rounded-full border-4 border-background bg-blue-500 shadow-sm" />
+
+                <p className="text-sm">
+                  <span className="font-semibold">
+                    {item.user.name || item.user.email}
+                  </span>{" "}
+                  {getActionText(item)}
+                </p>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(item.createdAt), {
+                    addSuffix: true,
+                  })}
+                </p>
+              </li>
+            ))}
           </ul>
         )}
       </DialogContent>

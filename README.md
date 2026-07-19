@@ -203,11 +203,11 @@ npm run build
 
 ## License
 
-No license has been specified. Add a license file, such as MIT, before distributing or accepting external contributions.
+This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## Author
 
-Created by **Your Name**.
+Created by **Hardik Kapil**.
 
-- GitHub: [@your-github-username](https://github.com/your-github-username)
-- LinkedIn: [Your Name](https://www.linkedin.com/in/your-linkedin-username/)
+- GitHub: [HardikKapil1](https://github.com/HardikKapil1)
+- LinkedIn: [Hardik Kapil](https://www.linkedin.com/in/hardik-kapil/)

@@ -13,6 +13,7 @@ import { createCollaborationProvider } from "@/lib/collaboration";
 import AiToolbar from "./ai-toolbar";
 import PresenceIndicator from "./presence-indicator";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 interface TipTapEditorProps {
   documentId: string;
@@ -114,7 +115,7 @@ export default function TipTapEditor({
       void flushQueue(documentId)
         .then((response) => {
           if (response?.status === 409) {
-            alert("Server has newer changes — reload?");
+            toast.info("Server has newer changes. Reload the page to see them.");
           }
         })
         .catch((error) => {
@@ -151,7 +152,7 @@ export default function TipTapEditor({
       });
 
       if (response.status === 409) {
-        alert("Server has newer changes — reload?");
+        toast.info("Server has newer changes. Reload the page to see them.");
         setSaveStatus("error");
         return;
       }
@@ -170,7 +171,7 @@ export default function TipTapEditor({
   if (!editor) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {pendingChanges.length > 0 && (
         <div className="flex items-center justify-between rounded bg-yellow-100 p-4 text-yellow-800">
           <span className="font-medium">⚠️ Offline changes found</span>
@@ -192,24 +193,24 @@ export default function TipTapEditor({
         onChange={handleTitleChange}
         readOnly={!editable}
         placeholder="Untitled Document"
-        className={`w-full bg-transparent text-4xl font-bold outline-none ${
+        className={`w-full rounded-xl border border-transparent bg-transparent px-3 py-2 text-3xl font-semibold tracking-tight outline-none transition focus:bg-blue-50/50 focus:ring-2 focus:ring-blue-500/20 sm:text-4xl ${
           !editable ? "cursor-default" : ""
         }`}
       />
 
-      <div className="text-sm text-gray-500">
+      <div className="px-3"><span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"><span className="size-1.5 rounded-full bg-blue-500" />
         {saveStatus === "idle" && "Live Sync Active"}
         {saveStatus === "saving" && "Saving Title..."}
         {saveStatus === "saved" && "Title Saved ✓"}
         {saveStatus === "error" && (
           <span className="text-red-500">Failed to save (Offline mode)</span>
         )}
-      </div>
+      </span></div>
 
-      <div className="min-h-[500px] rounded-lg border">
+      <div className="min-h-[500px] overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-shadow focus-within:border-blue-200 focus-within:shadow-md">
           {editable && <AiToolbar editor={editor} />}
 
-          <div className="p-6">
+          <div className="p-6 sm:p-10">
               <EditorContent editor={editor} />
           </div>
       </div>

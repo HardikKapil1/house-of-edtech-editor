@@ -49,7 +49,7 @@ export default function ShareDialog({ documentId }: ShareDialogProps) {
 
       setEmail("");
       setRole("VIEWER");
-      toast.success("Document shared successfully!");
+      toast.success(`Shared with ${email}`);
 
     } catch (error) {
       console.error(error);
@@ -61,13 +61,13 @@ export default function ShareDialog({ documentId }: ShareDialogProps) {
     
   return (
     <Dialog>
-      <DialogTrigger className="rounded-lg bg-blue-600 px-4 py-2 text-white">
+      <DialogTrigger className="h-9 rounded-xl bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md active:scale-[0.98]">
         Share
       </DialogTrigger>
 
-      <DialogContent>
+      <DialogContent className="gap-5 p-6 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share Document</DialogTitle>
+          <DialogTitle className="text-lg font-semibold tracking-tight">Share document</DialogTitle><p className="text-sm text-muted-foreground">Invite collaborators by email and choose what they can do.</p>
         </DialogHeader>
 
         <input
@@ -76,14 +76,14 @@ export default function ShareDialog({ documentId }: ShareDialogProps) {
           placeholder="Enter email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border p-2"
+          className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
         />
         
         <select
           disabled={loading}
           value={role}
           onChange={(e) => setRole(e.target.value as "VIEWER" | "EDITOR")}
-          className="w-full rounded-md border p-2"
+          className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
         >
           <option value="VIEWER">Viewer</option>
           <option value="EDITOR">Editor</option>
@@ -92,7 +92,7 @@ export default function ShareDialog({ documentId }: ShareDialogProps) {
         <button
           disabled={loading}
           onClick={handleShare}
-          className="rounded-md bg-blue-600 px-4 py-2 text-white"
+          className="h-10 rounded-xl bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Sharing..." : "Share"}
         </button>
