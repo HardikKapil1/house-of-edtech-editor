@@ -22,10 +22,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
 
       async authorize(credentials) {
-        console.log("Incoming credentials:", credentials);
+        //console.log("Incoming credentials:", credentials);
 
         if (!credentials?.email || !credentials?.password) {
-          console.log("Missing credentials");
+          //console.log("Missing credentials");
           return null;
         }
 
@@ -34,16 +34,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: credentials.email as string,
           },
         });
-
-        console.log("User from DB:", user);
+      
+        //console.log("User from DB:", user);
 
         if (!user) {
-          console.log("User not found");
+          //console.log("User not found");
           return null;
         }
 
         if (!user.password) {
-          console.log("User has no password");
+          //console.log("User has no password");
           return null;
         }
 
@@ -52,13 +52,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.password,
         );
 
-        console.log("Password matches:", passwordMatches);
+        //console.log("Password matches:", passwordMatches);
 
         if (!passwordMatches) {
           return null;
         }
 
-        console.log("Login successful");
+        //console.log("Login successful");
 
         return {
           id: user.id,
