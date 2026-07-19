@@ -1,43 +1,73 @@
 # House of EdTech Editor
 
-> A local-first collaborative editor that combines real-time CRDT writing with durable, permissioned application data.
+> A production-grade collaborative document editor featuring real-time CRDT-based editing, offline-first synchronization, role-based access control, audit logging, and AI-powered writing assistance.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org/) [![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)](https://prisma.io/) [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org/) [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss)](https://tailwindcss.com/) [![Auth.js](https://img.shields.io/badge/Auth.js-5-black)](https://authjs.dev/) [![Yjs](https://img.shields.io/badge/Yjs-CRDT-6E57FF)](https://yjs.dev/) [![Gemini AI](https://img.shields.io/badge/Gemini_AI-Google-4285F4?logo=google)](https://ai.google.dev/)
 
 A portfolio-grade Next.js App Router project for multi-user rich-text editing, offline-safe metadata changes, sharing, snapshots, audit history, and Gemini-powered writing assistance.
 
+## Highlights
+
+- 🚀 Real-time collaborative editing using CRDTs (Yjs)
+- 🌐 WebSocket synchronization
+- 📡 Offline-first editing with IndexedDB
+- 🔐 Role-based permissions (Owner / Editor / Viewer)
+- 🤖 Gemini-powered writing assistant
+- 📜 Document snapshots & audit history
+
+## Live Demo
+
+🌐 Live: https://house-of-edtech-editor-sand.vercel.app
+
+📦 GitHub: https://github.com/HardikKapil1/house-of-edtech-editor
+
 ## Screenshots
 
-| Dashboard | Collaborative editor |
-| --- | --- |
-| `![Dashboard](./docs/screenshots/dashboard.png)` | `![Editor](./docs/screenshots/editor.png)` |
+| Dashboard | Collaborative Editor |
+|----------|----------------------|
+| ![Dashboard](image.png) | ![Editor](image-1.png) |
 
-> Replace these placeholders with project screenshots.
+| Share Dialog | Version History | AI Toolbar |
+|--------------|------------------|------------|
+| ![Share](image-2.png) | ![History](image-3.png) | ![AI Toolbar](image-4.png) |
 
 ## Features
 
-- [x] Tiptap rich-text collaboration through Yjs and a dedicated `y-websocket` server
-- [x] Dexie/IndexedDB offline queue for durable document metadata
-- [x] Automatic CRDT merges for concurrent document-body changes
-- [x] Version-guarded conflict protection for durable updates
-- [x] Auth.js credentials authentication with bcrypt password hashing
-- [x] Server-enforced Owner, Editor, and Viewer roles
-- [x] Sharing, snapshots, restore workflow, and activity history
-- [x] Gemini actions: rewrite, summarize, continue, and fix grammar
+### Collaboration
+- ✓ Tiptap rich-text editing
+- ✓ Yjs CRDT merging over a dedicated `y-websocket` server
+- ✓ Automatic conflict-free merges for concurrent document-body edits
+
+### Offline
+- ✓ Dexie / IndexedDB offline queue for durable document metadata
+- ✓ Automatic retry sync on reconnect
+- ✓ Version-guarded conflict protection for durable updates
+
+### Security
+- ✓ Auth.js credentials authentication with bcrypt password hashing
+- ✓ Server-enforced Owner, Editor, and Viewer roles
+- ✓ Tenant-isolated membership checks on every request
+
+### Collaboration Tools
+- ✓ Sharing, snapshots, restore workflow, and activity history
+
+### AI
+- ✓ Gemini actions: rewrite, summarize, continue, and fix grammar
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-  C["Next.js client<br/>Tiptap - Yjs - Dexie"]
-  W["y-websocket service<br/>CRDT synchronization"]
-  A["Next.js API<br/>auth - validation - permissions"]
-  P[("PostgreSQL / Prisma")]
-  G["Gemini API"]
-  C <-->|WebSocket| W
-  C <-->|HTTPS| A
-  A --> P
-  A --> G
+    C[Next.js Client<br/>Tiptap - Yjs - Dexie]
+    W[y-websocket service<br/>CRDT synchronization]
+    A[Next.js API<br/>auth - validation - permissions]
+    P[(PostgreSQL / Prisma)]
+    G[Gemini API]
+
+    C <-->|WebSocket| W
+    C <-->|HTTPS| A
+    A --> P
+    A --> G
 ```
 
 The design separates the concerns that need real-time merging from durable application data. Tiptap renders the editor and Yjs represents and merges body state over the standalone WebSocket service. Next.js Route Handlers persist metadata, memberships, snapshots, and audit records to PostgreSQL through Prisma. Auth.js provides the identity used by every server-side permission check.
@@ -86,16 +116,16 @@ The client treats a lost connection as temporary, rather than discarding user wo
 
 Document body content is synchronized through Yjs over WebSocket. As a CRDT, Yjs automatically merges concurrent text and structure edits at character and document-structure level instead of allowing one writer to overwrite another.
 
-### Durable metadata: timestamp and version-guarded Last-Write-Wins
+### Durable metadata: Version-guarded optimistic concurrency
 
-Titles and persisted content deliberately use durable writes rather than character-level CRDT collaboration:
+Titles and persisted metadata use optimistic concurrency rather than CRDT merging.
 
-1. The client sends `clientUpdatedAt`.
-2. The API reads the current `updatedAt` and `version`.
-3. If the client timestamp is older, the API returns **HTTP 409 Conflict** with current server title and content.
-4. Eligible writes increment `version` using the previously-read version as an optimistic-concurrency guard. A competing winning write also causes `409`.
+1. The API reads the document's current `version`.
+2. Updates execute using `WHERE id = ? AND version = ?`.
+3. Successful writes atomically increment the version.
+4. If another request updates the document first, the update affects zero rows and the API returns **HTTP 409 Conflict** with the latest server state.
 
-This deterministic Last-Write-Wins policy prevents an offline client from silently overwriting newer server data and lets the UI request a reload.
+This prevents lost updates without relying on client timestamps or clock synchronization.
 
 ## Security and data isolation
 
@@ -196,10 +226,8 @@ npm run build
 ## Future improvements
 
 - Use CRDT-backed title collaboration for character-level title merges.
-- Add Playwright coverage for offline retries, `409` conflicts, restores, and multi-user sessions.
-- Expand awareness indicators with collaborator state and cursor locations.
-- Add rate limiting and request throttling.
-- Add production observability for the WebSocket service.
+- Add Playwright coverage for offline retries, `409` conflicts, and multi-user sessions.
+- Add rate limiting and production observability for the WebSocket service.
 
 ## License
 
